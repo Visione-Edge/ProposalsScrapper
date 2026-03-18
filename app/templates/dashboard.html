@@ -330,7 +330,7 @@
         tbody.innerHTML = rows.map((t, i) => {
             const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
             const newBadge = isNew(t) ? '<span class="new-badge">nuevo</span>' : '';
-            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) ? 'is-new' : (!t.viewed ? 'unviewed' : ''));
+            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) && !t.viewed ? 'is-new' : (!t.viewed ? 'unviewed' : ''));
             const unviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
             return `<tr class="${rowClass}" onclick="openModal(${i})">
                 <td onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
