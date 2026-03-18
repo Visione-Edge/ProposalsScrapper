@@ -5,12 +5,22 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 
+import yaml
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from sicop.scanner import run_scan
 
 logger = logging.getLogger(__name__)
+
+
+def _load_schedule(base_dir: Path) -> dict:
+    p = base_dir / "config.yaml"
+    if p.exists():
+        with open(p, encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+        return cfg.get("schedule", {})
+    return {}
 
 
 def setup_scheduler(scan_state: dict, base_dir: Path) -> BackgroundScheduler:
@@ -23,13 +33,18 @@ def setup_scheduler(scan_state: dict, base_dir: Path) -> BackgroundScheduler:
         logger.info("Iniciando scan programado")
         _do_scan(scan_state, base_dir)
 
-    # Por defecto: 7 AM hora Costa Rica, lunes a viernes
+    sched = _load_schedule(base_dir)
+    hour = sched.get("hour", 7)
+    minute = sched.get("minute", 0)
+    days = sched.get("days", "mon-fri")
+
     scheduler.add_job(
         scheduled_scan,
-        CronTrigger(hour=7, minute=0, day_of_week="mon-fri"),
+        CronTrigger(hour=hour, minute=minute, day_of_week=days),
         id="daily_scan",
         replace_existing=True,
     )
+    logger.info("Scan programado: %s:%02d dias=%s (America/Costa_Rica)", hour, minute, days)
     return scheduler
 
 

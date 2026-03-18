@@ -126,6 +126,11 @@
         .toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: none; max-width: 300px; }
         .toast.show { display: block; }
 
+        /* VIEWED */
+        .unviewed-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; margin-right: 5px; vertical-align: middle; flex-shrink: 0; }
+        tr.unviewed .title { font-weight: 700; }
+        .stat.unviewed-stat { border-left-color: #3b82f6; }
+
         /* MOBILE CARDS (hidden on desktop) */
         #mobile-cards { display: none; }
         .m-card {
@@ -138,6 +143,7 @@
         .m-card.rel-baja { border-left-color: var(--baja); }
         .m-card.card-new { border-left-color: #10b981; background: #f0fdf4; }
         .m-card.card-ni { opacity: 0.45; border-left-color: #fca5a5; }
+        .m-card.card-unviewed .m-card-title { font-weight: 700; }
         .m-card-top { display: flex; align-items: flex-start; gap: 8px; }
         .m-card-star { flex-shrink: 0; }
         .m-card-body { flex: 1; min-width: 0; }
@@ -163,7 +169,7 @@
             .container { padding: 12px 10px; }
 
             /* STATS */
-            .stats { grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+            .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
             .stat { padding: 8px 4px; border-left-width: 3px; border-radius: 6px; }
             .stat .n { font-size: 1.15rem; }
             .stat .l { font-size: 0.58rem; letter-spacing: 0; }
@@ -198,15 +204,10 @@
             .toast { bottom: 16px; right: 10px; left: 10px; max-width: 100%; text-align: center; font-size: 0.82rem; }
         }
 
-        /* ── SMALL MOBILE: <= 420px ─────────────────────────── */
-        @media (max-width: 420px) {
-            .stats { grid-template-columns: repeat(3, 1fr); }
-            .stat .n { font-size: 1.1rem; }
-        }
-
-        /* ── VERY SMALL: <= 340px ───────────────────────────── */
-        @media (max-width: 340px) {
+        /* ── SMALL MOBILE: <= 380px ─────────────────────────── */
+        @media (max-width: 380px) {
             .stats { grid-template-columns: repeat(2, 1fr); }
+            .stat .n { font-size: 1.1rem; }
         }
     </style>
 </head>
@@ -253,6 +254,10 @@
         <div class="stat fav">
             <div class="n" id="fav-count">{{ stats.favorites }}</div>
             <div class="l">Favoritos</div>
+        </div>
+        <div class="stat unviewed-stat">
+            <div class="n" id="unviewed-count">{{ stats.unviewed }}</div>
+            <div class="l">No vistas</div>
         </div>
     </div>
 
@@ -402,13 +407,14 @@
         tbody.innerHTML = rows.map((t, i) => {
             const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
             const newBadge = isNew(t) ? '<span class="new-badge">nuevo</span>' : '';
-            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) ? 'is-new' : '');
+            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) && !t.viewed ? 'is-new' : (!t.viewed ? 'unviewed' : ''));
+            const unviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
             return `<tr class="${rowClass}" onclick="openModal(${i})">
                 <td onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
                     <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
                 </td>
                 <td><span class="badge ${t.relevance}">${t.relevance}</span></td>
-                <td class="name-cell"><span class="title">${esc(t.name)}</span>${newBadge}
+                <td class="name-cell">${unviewedDot}<span class="title">${esc(t.name)}</span>${newBadge}
                     ${kw.length ? `<div class="kw-preview">${kw.slice(0,4).join(', ')}</div>` : ''}</td>
                 <td class="inst-cell" title="${esc(t.institution_name)}">${esc(t.institution_name)}</td>
                 <td title="${esc(PROC[t.procedure_type])}">${esc(t.procedure_type)}</td>
@@ -422,14 +428,15 @@
         document.getElementById('mobile-cards').innerHTML = rows.map((t, i) => {
             const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
             const newBadge = isNew(t) ? ' <span class="new-badge">nuevo</span>' : '';
-            const cardClass = t.not_interested ? 'card-ni' : (isNew(t) ? 'card-new' : '');
+            const cardClass = t.not_interested ? 'card-ni' : (isNew(t) ? 'card-new' : (!t.viewed ? 'card-unviewed' : ''));
+            const mUnviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
             return `<div class="m-card rel-${t.relevance} ${cardClass}" onclick="openModal(${i})">
                 <div class="m-card-top">
                     <div class="m-card-star" onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
                         <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
                     </div>
                     <div class="m-card-body">
-                        <div class="m-card-title">${esc(t.name)}${newBadge}</div>
+                        <div class="m-card-title">${mUnviewedDot}${esc(t.name)}${newBadge}</div>
                         <div class="m-card-inst">${esc(t.institution_name)}</div>
                         ${kw.length ? `<div class="m-card-kw">${kw.slice(0,3).join(', ')}</div>` : ''}
                     </div>
@@ -487,6 +494,16 @@
     function openModal(i) {
         const t = window._filtered[i];
         currentTender = t;
+
+        // Mark as viewed
+        if (!t.viewed) {
+            fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/viewed`, {method:'POST'});
+            const dataIdx = DATA.indexOf(t);
+            DATA[dataIdx].viewed = 1;
+            t.viewed = 1;
+            const cnt = document.getElementById('unviewed-count');
+            if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
+        }
 
         document.getElementById('m-title').textContent = t.name || '—';
 

@@ -242,6 +242,13 @@ async def save_notes(cartel_no: str, cartel_seq: str, request: Request):
     return {"ok": True}
 
 
+@app.post("/api/tender/{cartel_no}/{cartel_seq}/viewed")
+async def mark_viewed(cartel_no: str, cartel_seq: str):
+    with get_storage() as storage:
+        storage.mark_viewed(cartel_no, cartel_seq)
+    return {"ok": True}
+
+
 # ── API — Scan ────────────────────────────────────────────────────────────────
 
 @app.post("/api/scan")

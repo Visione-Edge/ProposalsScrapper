@@ -21,7 +21,13 @@ dashboard_output: data/dashboard.html
 # Niveles mínimos de relevancia para notificar (alta, media, baja)
 notify_min_relevance: media
 
-# Notificaciones — deshabilitadas por default
+# Horario del scan automático diario
+schedule:
+  hour: 7        # Hora (0-23) en America/Costa_Rica
+  minute: 0
+  days: "mon-fri"  # Días: mon, tue, wed, thu, fri, sat, sun (o rangos mon-fri)
+
+# Notificaciones
 notifications:
   slack:
     enabled: false
@@ -29,6 +35,22 @@ notifications:
   discord:
     enabled: false
     webhook_url: ""
+  email:
+    enabled: true
+    # Servidor SMTP (Gmail: smtp.gmail.com, Outlook: smtp.office365.com)
+    host: "smtp.gmail.com"
+    port: 587
+    # Usuario SMTP (tu dirección de correo remitente)
+    username: ""
+    # Contraseña: definila en .env como SMTP_PASSWORD (no la pongas aquí)
+    password: ""
+    # Destinatarios
+    recipients:
+      - "info@visione-edge.com"
+    # Notificar cuando hay licitaciones nuevas relevantes
+    notify_on_new: true
+    # Notificar cuando una licitación favorita entra en estado de contrato/adjudicación
+    notify_on_contract: true
 
 # Filtros opcionales de tipos de procedimiento a incluir
 # (vacío = todos). Códigos: LN, LI, LA, PP, CD, CE, RE, LD
