@@ -1,666 +1,117 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proposals Center</title>
-    <style>
-        :root {
-            --alta: #e74c3c; --media: #f39c12; --baja: #3498db;
-            --bg: #f0f2f5; --card: #fff; --text: #1a2332; --muted: #6b7280;
-            --border: #e5e7eb; --primary: #2c3e50; --accent: #3498db;
-            --new: #d1fae5;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+{% extends "base.html" %}
 
-        /* NAV */
-        nav { background: var(--primary); color: white; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; position: sticky; top: 0; z-index: 40; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
-        .nav-brand { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px; }
-        .nav-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; }
-        .nav-right { display: flex; align-items: center; gap: 12px; }
-        .scan-info { font-size: 0.78rem; opacity: 0.75; }
-        .btn { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-size: 0.82rem; font-weight: 600; transition: all 0.15s; }
-        .btn-scan { background: #27ae60; color: white; }
-        .btn-scan:hover { background: #219a52; }
-        .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-logout { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.2); }
-        .btn-logout:hover { background: rgba(255,255,255,0.22); }
+{% block title %}Visione — Dashboard{% endblock %}
 
-        /* LAYOUT */
-        .container { max-width: 1480px; margin: 0 auto; padding: 20px 24px; }
+{% block styles %}
+<link rel="stylesheet" href="/static/css/dashboard.css">
+<link rel="stylesheet" href="/static/css/modal.css">
+{% endblock %}
 
-        /* STATS */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px; }
-        .stat { background: var(--card); border-radius: 8px; padding: 14px 16px; text-align: center; border-left: 4px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-        .stat.alta { border-left-color: var(--alta); }
-        .stat.media { border-left-color: var(--media); }
-        .stat.baja { border-left-color: var(--baja); }
-        .stat.fav { border-left-color: #f59e0b; }
-        .stat .n { font-size: 1.9rem; font-weight: 700; }
-        .stat .l { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); }
+{% block nav_actions %}
+<button class="btn btn-primary" id="btn-scan" onclick="startScan()">Escanear</button>
+{% endblock %}
 
-        /* FILTERS */
-        .filters { background: var(--card); border-radius: 8px; padding: 14px 16px; margin-bottom: 16px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-        .filters input, .filters select { padding: 7px 11px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; background: white; }
-        .filters input[type="text"] { flex: 1; min-width: 180px; }
-        .toggle-btn { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.82rem; font-weight: 500; color: var(--muted); transition: all 0.15s; }
-        .toggle-btn.active { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
-        .toggle-btn.active-red { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-        .filter-toggles { display: flex; gap: 10px; }
-
-        /* TABLE */
-        .count-info { font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
-        .table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-        table { width: 100%; min-width: 880px; table-layout: fixed; border-collapse: collapse; background: var(--card); }
-        col.c-star { width: 40px; }
-        col.c-rel  { width: 82px; }
-        col.c-name { width: 34%; }
-        col.c-inst { width: 20%; }
-        col.c-type { width: 54px; }
-        col.c-stat { width: 110px; }
-        col.c-pub  { width: 98px; }
-        col.c-dlim { width: 98px; }
-        thead { background: #f3f4f6; }
-        th { padding: 11px 12px; text-align: left; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); white-space: nowrap; cursor: pointer; user-select: none; }
-        th:hover { color: var(--text); }
-        th .arr { margin-left: 3px; font-size: 0.65rem; }
-        td { padding: 9px 12px; border-top: 1px solid var(--border); font-size: 0.86rem; overflow: hidden; }
-        tr { cursor: pointer; }
-        tr:hover td { background: #f8faff; }
-        tr.is-new td { background: var(--new); }
-        tr.is-new:hover td { background: #bbf7d0; }
-        tr.not-interested-row td { opacity: 0.45; }
-
-        /* STAR */
-        .star-btn { background: none; border: none; cursor: pointer; font-size: 1.1rem; padding: 0; line-height: 1; color: #d1d5db; transition: color 0.15s; }
-        .star-btn.on { color: #f59e0b; }
-        .star-btn:hover { color: #f59e0b; }
-
-        /* BADGE */
-        .badge { display: inline-block; padding: 2px 9px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; color: white; text-transform: uppercase; }
-        .badge.alta { background: var(--alta); }
-        .badge.media { background: var(--media); }
-        .badge.baja { background: var(--baja); }
-        .new-badge { display: inline-block; background: #10b981; color: white; font-size: 0.62rem; font-weight: 700; border-radius: 4px; padding: 1px 5px; margin-left: 5px; vertical-align: middle; text-transform: uppercase; }
-
-        .name-cell { word-wrap: break-word; overflow-wrap: break-word; }
-        .name-cell .title { font-weight: 500; color: #1d4ed8; }
-        .kw-preview { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }
-        .inst-cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .date-cell { white-space: nowrap; font-size: 0.8rem; }
-        .no-results { text-align: center; padding: 48px; color: var(--muted); background: var(--card); border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.07); }
-
-        /* MODAL */
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center; padding: 16px; }
-        .overlay.open { display: flex; }
-        .modal { background: var(--card); border-radius: 12px; max-width: 680px; width: 100%; max-height: 92vh; overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.25); display: flex; flex-direction: column; }
-        .modal-head { padding: 22px 24px 14px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; position: sticky; top: 0; background: var(--card); border-radius: 12px 12px 0 0; z-index: 1; }
-        .modal-head h2 { font-size: 1rem; font-weight: 600; line-height: 1.4; flex: 1; min-width: 0; word-wrap: break-word; overflow-wrap: break-word; }
-        .modal-close { background: none; border: none; font-size: 1.3rem; cursor: pointer; color: var(--muted); padding: 0 2px; line-height: 1; flex-shrink: 0; }
-        .modal-close:hover { color: var(--text); }
-        .modal-body { padding: 18px 24px 24px; }
-        .modal-actions { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
-        .action-btn { padding: 7px 14px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-size: 0.82rem; font-weight: 500; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
-        .action-btn.fav-on { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
-        .action-btn.ni-on { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
-        .action-btn:hover { background: #f3f4f6; }
-        .action-btn.fav-on:hover, .action-btn.ni-on:hover { filter: brightness(0.95); }
-        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; margin-bottom: 18px; }
-        .detail-item { padding: 9px 0; border-bottom: 1px solid var(--border); }
-        .detail-item.full { grid-column: 1/-1; }
-        .detail-item .dl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin-bottom: 2px; }
-        .detail-item .dv { font-size: 0.9rem; word-wrap: break-word; }
-        .kw-section { margin-top: 4px; }
-        .kw-section .dl { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.4px; color: var(--muted); margin-bottom: 6px; }
-        .kw-tag { display: inline-block; background: #eff6ff; color: #1d4ed8; border-radius: 4px; padding: 2px 8px; font-size: 0.76rem; margin: 2px; }
-        .notes-section { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-        .notes-section label { font-size: 0.78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; display: block; margin-bottom: 6px; }
-        .notes-section textarea { width: 100%; padding: 10px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.88rem; font-family: inherit; resize: vertical; min-height: 80px; outline: none; }
-        .notes-section textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(52,152,219,0.12); }
-        .notes-save { margin-top: 8px; padding: 6px 14px; background: var(--primary); color: white; border: none; border-radius: 6px; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
-        .notes-save:hover { background: #34495e; }
-        .notes-saved { font-size: 0.8rem; color: #10b981; margin-left: 8px; display: none; }
-
-        /* SCAN TOAST */
-        .toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: none; max-width: 300px; }
-        .toast.show { display: block; }
-
-        /* VIEWED */
-        .unviewed-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; margin-right: 5px; vertical-align: middle; flex-shrink: 0; }
-        tr.unviewed .title { font-weight: 700; }
-        .stat.unviewed-stat { border-left-color: #3b82f6; }
-
-        /* MOBILE CARDS (hidden on desktop) */
-        #mobile-cards { display: none; }
-        .m-card {
-            background: var(--card); border-radius: 10px; padding: 12px;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08); border-left: 4px solid var(--border);
-            cursor: pointer; margin-bottom: 8px;
-        }
-        .m-card.rel-alta { border-left-color: var(--alta); }
-        .m-card.rel-media { border-left-color: var(--media); }
-        .m-card.rel-baja { border-left-color: var(--baja); }
-        .m-card.card-new { border-left-color: #10b981; background: #f0fdf4; }
-        .m-card.card-ni { opacity: 0.45; border-left-color: #fca5a5; }
-        .m-card.card-unviewed .m-card-title { font-weight: 700; }
-        .m-card-top { display: flex; align-items: flex-start; gap: 8px; }
-        .m-card-star { flex-shrink: 0; }
-        .m-card-body { flex: 1; min-width: 0; }
-        .m-card-badge { flex-shrink: 0; align-self: flex-start; }
-        .m-card-title { font-size: 0.86rem; font-weight: 500; color: #1d4ed8; line-height: 1.3; word-wrap: break-word; overflow-wrap: break-word; }
-        .m-card-inst { font-size: 0.76rem; color: var(--muted); margin-top: 4px; }
-        .m-card-kw { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
-        .m-card-footer { display: flex; gap: 12px; margin-top: 6px; font-size: 0.72rem; color: var(--muted); }
-        .m-card-footer span { font-weight: 600; }
-
-        /* ── MOBILE: <= 768px ────────────────────────────────── */
-        @media (max-width: 768px) {
-            html, body { overflow-x: hidden; max-width: 100vw; }
-
-            /* NAV */
-            nav { height: auto; min-height: 48px; flex-wrap: wrap; padding: 10px 12px; gap: 6px; }
-            .nav-brand { font-size: 0.88rem; flex-shrink: 0; }
-            .nav-right { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-            .scan-info { display: block; width: 100%; text-align: right; font-size: 0.7rem; order: 10; margin-top: 2px; }
-            .btn { padding: 5px 10px; font-size: 0.76rem; }
-
-            /* CONTAINER */
-            .container { padding: 12px 10px; }
-
-            /* STATS */
-            .stats { grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; }
-            .stat { padding: 8px 4px; border-left-width: 3px; border-radius: 6px; }
-            .stat .n { font-size: 1.15rem; }
-            .stat .l { font-size: 0.58rem; letter-spacing: 0; }
-
-            /* FILTERS */
-            .filters { flex-direction: column; padding: 10px; gap: 8px; }
-            .filters input[type="text"] { min-width: 0; width: 100%; }
-            .filters select { width: 100%; }
-            .filter-toggles { display: flex; flex-direction: row; gap: 6px; width: 100%; }
-            .filter-toggles .toggle-btn { flex: 1; text-align: center; font-size: 0.78rem; padding: 8px 4px; }
-
-            /* HIDE TABLE, SHOW CARDS */
-            .table-wrap { display: none; }
-            #mobile-cards { display: block; }
-
-            .count-info { font-size: 0.78rem; }
-            .no-results { margin: 0; }
-
-            /* MODAL - bottom sheet */
-            .overlay { padding: 0; align-items: flex-end; }
-            .modal { max-width: 100%; max-height: 94vh; border-radius: 16px 16px 0 0; }
-            .modal-head { padding: 16px 14px 12px; }
-            .modal-head h2 { font-size: 0.92rem; }
-            .modal-body { padding: 10px 14px 24px; }
-            .modal-actions { gap: 8px; }
-            .action-btn { flex: 1; justify-content: center; font-size: 0.8rem; padding: 10px 6px; }
-            .detail-grid { grid-template-columns: 1fr; }
-            .detail-item .dv { font-size: 0.84rem; }
-            .notes-section textarea { min-height: 60px; }
-
-            /* TOAST */
-            .toast { bottom: 16px; right: 10px; left: 10px; max-width: 100%; text-align: center; font-size: 0.82rem; }
-        }
-
-        /* ── SMALL MOBILE: <= 380px ─────────────────────────── */
-        @media (max-width: 380px) {
-            .stats { grid-template-columns: repeat(2, 1fr); }
-            .stat .n { font-size: 1.1rem; }
-        }
-    </style>
-</head>
-<body>
-
-<nav>
-    <div class="nav-brand">
-        <span class="dot"></span> Proposals Center
-    </div>
-    <div class="nav-right">
-        <span class="scan-info" id="scan-info">
-            {% if scan_state.last_result %}
-                Último scan: {{ scan_state.last_result.completed_at[:16].replace('T',' ') }}
-            {% else %}
-                Sin scan registrado
-            {% endif %}
-        </span>
-        <button class="btn btn-scan" id="btn-scan" onclick="startScan()">Escanear</button>
-        <a href="/settings" class="btn btn-logout">Configuracion</a>
-        <form action="/logout" method="post" style="display:inline">
-            <button type="submit" class="btn btn-logout">Salir</button>
-        </form>
-    </div>
-</nav>
-
-<div class="container">
-    <div class="stats">
-        <div class="stat">
-            <div class="n">{{ stats.total }}</div>
-            <div class="l">Total</div>
-        </div>
-        <div class="stat alta">
-            <div class="n">{{ stats.by_relevance.get('alta', 0) }}</div>
-            <div class="l">Alta</div>
-        </div>
-        <div class="stat media">
-            <div class="n">{{ stats.by_relevance.get('media', 0) }}</div>
-            <div class="l">Media</div>
-        </div>
-        <div class="stat baja">
-            <div class="n">{{ stats.by_relevance.get('baja', 0) }}</div>
-            <div class="l">Baja</div>
-        </div>
-        <div class="stat fav">
-            <div class="n" id="fav-count">{{ stats.favorites }}</div>
-            <div class="l">Favoritos</div>
-        </div>
-        <div class="stat unviewed-stat">
-            <div class="n" id="unviewed-count">{{ stats.unviewed }}</div>
-            <div class="l">No vistas</div>
-        </div>
-    </div>
-
-    <div class="filters">
-        <input type="text" id="q" placeholder="Buscar...">
-        <select id="f-rel">
-            <option value="">Todas las relevancias</option>
-            <option value="alta">Alta</option>
-            <option value="media">Media</option>
-            <option value="baja">Baja</option>
-        </select>
-        <select id="f-inst"><option value="">Todas las instituciones</option></select>
-        <div class="filter-toggles">
-            <button class="toggle-btn" id="btn-fav" onclick="toggleFilter('fav')">Favoritos</button>
-            <button class="toggle-btn" id="btn-new" onclick="toggleFilter('new')">Nuevas</button>
-            <button class="toggle-btn" id="btn-ni" onclick="toggleFilter('ni')">Ocultas</button>
-        </div>
-    </div>
-
-    <div class="count-info"><span id="count">0</span> licitaciones</div>
-
-    <div class="table-wrap">
-        <table>
-            <colgroup>
-                <col class="c-star"><col class="c-rel"><col class="c-name">
-                <col class="c-inst"><col class="c-type"><col class="c-stat">
-                <col class="c-pub"><col class="c-dlim">
-            </colgroup>
-            <thead>
-                <tr>
-                    <th></th>
-                    <th data-s="relevance">Relevancia <span class="arr"></span></th>
-                    <th data-s="name">Nombre <span class="arr"></span></th>
-                    <th data-s="institution_name">Institución <span class="arr"></span></th>
-                    <th data-s="procedure_type">Tipo <span class="arr"></span></th>
-                    <th data-s="status">Estado <span class="arr"></span></th>
-                    <th data-s="registration_date">Publicación <span class="arr"></span></th>
-                    <th data-s="bid_end_date">Fecha límite <span class="arr"></span></th>
-                </tr>
-            </thead>
-            <tbody id="tbody"></tbody>
-        </table>
-    </div>
-    <div id="mobile-cards"></div>
-    <div id="no-results" class="no-results" style="display:none;">No hay licitaciones con esos filtros.</div>
+{% block content %}
+<!-- Stats -->
+<div class="stats-bar">
+    <span class="stats-item"><strong>{{ stats.total }}</strong> licitaciones escaneadas</span>
+    <span class="stats-separator">·</span>
+    <span class="stats-item"><strong class="alta-text">{{ stats.by_relevance.get('alta', 0) }}</strong> de alta relevancia</span>
+    <span class="stats-separator">·</span>
+    <span class="stats-item" id="scan-time-stat">Último scan: {% if scan_state.last_result %}{{ scan_state.last_result.completed_at[:16].replace('T',' ') }}{% else %}—{% endif %}</span>
 </div>
+<span id="fav-count" style="display:none">{{ stats.favorites }}</span>
+<span id="unviewed-count" style="display:none">{{ stats.unviewed }}</span>
+
+<!-- Filters -->
+<div class="filters-bar">
+    <input type="text" class="filter-input" id="search-input" placeholder="Buscar por nombre, institución, ejecutor...">
+    <select class="filter-select" id="filter-relevance">
+        <option value="">Todas las relevancias</option>
+        <option value="alta">Alta</option>
+        <option value="media">Media</option>
+        <option value="baja">Baja</option>
+    </select>
+    <select class="filter-select" id="filter-institution">
+        <option value="">Todas las instituciones</option>
+    </select>
+    <div class="filter-toggles">
+        <button class="toggle-chip" id="btn-fav" onclick="toggleFilter('fav')">Favoritos</button>
+        <button class="toggle-chip" id="btn-new" onclick="toggleFilter('new')">Nuevas</button>
+        <button class="toggle-chip" id="btn-hidden" onclick="toggleFilter('hidden')">Ocultas</button>
+    </div>
+</div>
+
+<div class="results-count"><span id="results-count">0</span> licitaciones</div>
+
+<!-- Desktop Table -->
+<div class="table-container">
+    <table class="data-table">
+        <colgroup>
+            <col class="col-star"><col class="col-relevance"><col class="col-name">
+            <col class="col-institution"><col class="col-type"><col class="col-status">
+            <col class="col-date-pub"><col class="col-date-limit">
+        </colgroup>
+        <thead>
+            <tr>
+                <th></th>
+                <th data-sort="relevance">Relevancia <span class="sort-arrow"></span></th>
+                <th data-sort="name">Nombre <span class="sort-arrow"></span></th>
+                <th data-sort="institution_name">Institución <span class="sort-arrow"></span></th>
+                <th data-sort="procedure_type">Tipo <span class="sort-arrow"></span></th>
+                <th data-sort="status">Estado <span class="sort-arrow"></span></th>
+                <th data-sort="registration_date">Publicación <span class="sort-arrow"></span></th>
+                <th data-sort="bid_end_date">Fecha límite <span class="sort-arrow"></span></th>
+            </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+    </table>
+</div>
+
+<!-- Mobile Cards -->
+<div class="mobile-cards" id="mobile-cards"></div>
+<div id="no-results" class="no-results" style="display:none;">No hay licitaciones con esos filtros.</div>
 
 <!-- Modal -->
 <div class="overlay" id="overlay">
     <div class="modal">
-        <div class="modal-head">
-            <h2 id="m-title"></h2>
+        <div class="modal-header">
+            <h2 id="modal-title"></h2>
             <button class="modal-close" onclick="closeModal()">✕</button>
         </div>
         <div class="modal-body">
             <div class="modal-actions">
-                <button class="action-btn" id="m-fav-btn" onclick="modalToggleFav()">Favorito</button>
-                <button class="action-btn" id="m-ni-btn" onclick="modalToggleNI()">No me interesa</button>
+                <button class="action-btn" id="modal-fav-btn" onclick="modalToggleFavorite()">Favorito</button>
+                <button class="action-btn" id="modal-hidden-btn" onclick="modalToggleHidden()">No me interesa</button>
             </div>
-            <div class="detail-grid" id="m-grid"></div>
-            <div class="kw-section" id="m-kw" style="display:none">
-                <div class="dl">Palabras clave detectadas</div>
-                <div id="m-kw-tags"></div>
+            <div class="detail-grid" id="modal-details"></div>
+            <div class="keywords-section" id="modal-keywords" style="display:none">
+                <div class="detail-label">Palabras clave detectadas</div>
+                <div id="modal-keyword-tags"></div>
             </div>
             <div class="notes-section">
                 <label>Notas</label>
-                <textarea id="m-notes" placeholder="Agrega tus notas aquí..."></textarea>
-                <button class="notes-save" onclick="saveNotes()">Guardar notas</button>
-                <span class="notes-saved" id="notes-saved">✓ Guardado</span>
+                <textarea class="notes-textarea" id="modal-notes" placeholder="Agrega tus notas aquí..."></textarea>
+                <div class="notes-actions">
+                    <button class="btn btn-primary" onclick="saveNotes()">Guardar notas</button>
+                    <span class="notes-saved" id="notes-saved">✓ Guardado</span>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
 <div class="toast" id="toast"></div>
+{% endblock %}
 
+{% block scripts %}
 <script>
-    const DATA = JSON.parse({{ tenders_json | tojson }});
-    const REL_ORDER = {alta: 0, media: 1, baja: 2};
-    const PROC = {
-        LN:'Licitación Pública Nacional', LI:'Licitación Pública Internacional',
-        LA:'Licitación Abreviada', PP:'Procedimiento por Principio',
-        CD:'Contratación Directa', CE:'Contratación Especial',
-        RE:'Remate', LY:'Licitación Mayor', LE:'Licitación Menor',
-        LD:'Licitación Reducida', PE:'Procedimientos Especiales',
-        SE:'Subasta Inversa Electrónica', PX:'Procedimiento por Excepción',
+    window.SICOP = {
+        tenders: JSON.parse({{ tenders_json | tojson }}),
+        lastScan: "{{ scan_state.last_result.completed_at[:16].replace('T',' ') if scan_state.last_result else '' }}"
     };
-
-    // State
-    const state = {fav: false, new: false, ni: false};
-    let sortCol = 'registration_date', sortDir = -1;
-    let currentTender = null;
-
-    // "New" = first_seen within last 48h
-    const cutoff = new Date(Date.now() - 48 * 3600 * 1000).toISOString();
-
-    // Populate institution filter
-    const insts = [...new Set(DATA.map(t => t.institution_name))].filter(Boolean).sort();
-    const sel = document.getElementById('f-inst');
-    insts.forEach(n => { const o = document.createElement('option'); o.value = o.textContent = n; sel.appendChild(o); });
-
-    function esc(s) {
-        if (s == null || s === '') return '—';
-        return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-    }
-    function d(s) { return s ? String(s).slice(0, 10) : '—'; }
-    function dt(s) { return s ? String(s).slice(0, 16).replace('T',' ') : '—'; }
-
-    function isNew(t) { return t.first_seen && t.first_seen >= cutoff.slice(0, 19); }
-
-    function render() {
-        const q = document.getElementById('q').value.toLowerCase();
-        const rel = document.getElementById('f-rel').value;
-        const inst = document.getElementById('f-inst').value;
-
-        let rows = DATA.filter(t => {
-            if (rel && t.relevance !== rel) return false;
-            if (inst && t.institution_name !== inst) return false;
-            if (state.fav && !t.favorite) return false;
-            if (state.new && !isNew(t)) return false;
-            if (!state.ni && t.not_interested) return false;
-            if (state.ni && !t.not_interested) return false;
-            if (q) {
-                const hay = `${t.name} ${t.inst_cartel_no} ${t.institution_name} ${t.executor_name} ${t.notes || ''}`.toLowerCase();
-                if (!hay.includes(q)) return false;
-            }
-            return true;
-        });
-
-        rows.sort((a, b) => {
-            let va = a[sortCol] ?? '', vb = b[sortCol] ?? '';
-            if (sortCol === 'relevance') { va = REL_ORDER[va] ?? 9; vb = REL_ORDER[vb] ?? 9; }
-            if (va < vb) return -sortDir;
-            if (va > vb) return sortDir;
-            return 0;
-        });
-
-        window._filtered = rows;
-        document.getElementById('count').textContent = rows.length;
-        const tbody = document.getElementById('tbody');
-        const noRes = document.getElementById('no-results');
-
-        if (!rows.length) { tbody.innerHTML = ''; noRes.style.display = 'block'; return; }
-        noRes.style.display = 'none';
-
-        // Desktop table rows
-        tbody.innerHTML = rows.map((t, i) => {
-            const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
-            const newBadge = isNew(t) ? '<span class="new-badge">nuevo</span>' : '';
-            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) && !t.viewed ? 'is-new' : (!t.viewed ? 'unviewed' : ''));
-            const unviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
-            return `<tr class="${rowClass}" onclick="openModal(${i})">
-                <td onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
-                    <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
-                </td>
-                <td><span class="badge ${esc(t.relevance)}">${esc(t.relevance)}</span></td>
-                <td class="name-cell">${unviewedDot}<span class="title">${esc(t.name)}</span>${newBadge}
-                    ${kw.length ? `<div class="kw-preview">${kw.slice(0,4).map(k => esc(k)).join(', ')}</div>` : ''}</td>
-                <td class="inst-cell" title="${esc(t.institution_name)}">${esc(t.institution_name)}</td>
-                <td title="${esc(PROC[t.procedure_type])}">${esc(t.procedure_type)}</td>
-                <td>${esc(t.status)}</td>
-                <td class="date-cell">${d(t.registration_date)}</td>
-                <td class="date-cell">${d(t.bid_end_date)}</td>
-            </tr>`;
-        }).join('');
-
-        // Mobile cards
-        document.getElementById('mobile-cards').innerHTML = rows.map((t, i) => {
-            const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
-            const newBadge = isNew(t) ? ' <span class="new-badge">nuevo</span>' : '';
-            const cardClass = t.not_interested ? 'card-ni' : (isNew(t) ? 'card-new' : (!t.viewed ? 'card-unviewed' : ''));
-            const mUnviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
-            return `<div class="m-card rel-${esc(t.relevance)} ${cardClass}" onclick="openModal(${i})">
-                <div class="m-card-top">
-                    <div class="m-card-star" onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
-                        <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
-                    </div>
-                    <div class="m-card-body">
-                        <div class="m-card-title">${mUnviewedDot}${esc(t.name)}${newBadge}</div>
-                        <div class="m-card-inst">${esc(t.institution_name)}</div>
-                        ${kw.length ? `<div class="m-card-kw">${kw.slice(0,3).map(k => esc(k)).join(', ')}</div>` : ''}
-                    </div>
-                    <div class="m-card-badge"><span class="badge ${esc(t.relevance)}">${esc(t.relevance)}</span></div>
-                </div>
-                <div class="m-card-footer">
-                    <div><span>Pub:</span> ${d(t.registration_date)}</div>
-                    <div><span>Límite:</span> ${d(t.bid_end_date)}</div>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    async function toggleFavRow(event, i) {
-        const t = window._filtered[i];
-        const dataIdx = DATA.indexOf(t);
-        const res = await fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/favorite`, {method:'POST'});
-        const {favorite} = await res.json();
-        DATA[dataIdx].favorite = favorite;
-        updateFavCount();
-        render();
-    }
-
-    function updateFavCount() {
-        document.getElementById('fav-count').textContent = DATA.filter(t => t.favorite).length;
-    }
-
-    function toggleFilter(key) {
-        state[key] = !state[key];
-        const map = {fav: 'btn-fav', new: 'btn-new', ni: 'btn-ni'};
-        const btn = document.getElementById(map[key]);
-        if (key === 'ni') btn.classList.toggle('active-red', state[key]);
-        else btn.classList.toggle('active', state[key]);
-        render();
-    }
-
-    // Sort
-    document.querySelectorAll('th[data-s]').forEach(th => {
-        th.addEventListener('click', () => {
-            const col = th.dataset.s;
-            sortDir = sortCol === col ? -sortDir : (col.includes('date') ? -1 : 1);
-            sortCol = col;
-            document.querySelectorAll('th .arr').forEach(a => a.textContent = '');
-            th.querySelector('.arr').textContent = sortDir === 1 ? '▲' : '▼';
-            render();
-        });
-    });
-
-    document.getElementById('q').addEventListener('input', render);
-    document.getElementById('f-rel').addEventListener('change', render);
-    document.getElementById('f-inst').addEventListener('change', render);
-
-    // ── Modal ─────────────────────────────────────────────────────────────────
-
-    function openModal(i) {
-        const t = window._filtered[i];
-        currentTender = t;
-
-        // Mark as viewed
-        if (!t.viewed) {
-            fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/viewed`, {method:'POST'});
-            const dataIdx = DATA.indexOf(t);
-            DATA[dataIdx].viewed = 1;
-            t.viewed = 1;
-            const cnt = document.getElementById('unviewed-count');
-            if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
-        }
-
-        document.getElementById('m-title').textContent = t.name || '—';
-
-        const fields = [
-            ['N° de concurso', t.inst_cartel_no],
-            ['N° SICOP', t.cartel_no],
-            ['Institución', t.institution_name, true],
-            ['Ejecutor', t.executor_name, true],
-            ['Tipo de procedimiento', PROC[t.procedure_type] ? `${t.procedure_type} — ${PROC[t.procedure_type]}` : t.procedure_type, true],
-            ['Estado', t.status],
-            ['Publicación', dt(t.registration_date)],
-            ['Inicio oferta', dt(t.bid_start_date)],
-            ['Fecha límite', dt(t.bid_end_date)],
-            ['Apertura', dt(t.opening_date)],
-            ['Primera vez visto', dt(t.first_seen)],
-        ];
-
-        document.getElementById('m-grid').innerHTML = fields.map(([l, v, full]) =>
-            `<div class="detail-item${full ? ' full' : ''}">
-                <div class="dl">${l}</div>
-                <div class="dv">${esc(v)}</div>
-            </div>`
-        ).join('');
-
-        const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
-        const kwSec = document.getElementById('m-kw');
-        if (kw.length) {
-            document.getElementById('m-kw-tags').innerHTML = kw.map(k => `<span class="kw-tag">${esc(k)}</span>`).join('');
-            kwSec.style.display = 'block';
-        } else {
-            kwSec.style.display = 'none';
-        }
-
-        document.getElementById('m-notes').value = t.notes || '';
-        document.getElementById('notes-saved').style.display = 'none';
-
-        const favBtn = document.getElementById('m-fav-btn');
-        const niBtn = document.getElementById('m-ni-btn');
-        favBtn.className = `action-btn ${t.favorite ? 'fav-on' : ''}`;
-        favBtn.textContent = t.favorite ? '★ Favorito' : 'Favorito';
-        niBtn.className = `action-btn ${t.not_interested ? 'ni-on' : ''}`;
-        niBtn.textContent = t.not_interested ? 'Mostrar' : 'No me interesa';
-
-        document.getElementById('overlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeModal() {
-        document.getElementById('overlay').classList.remove('open');
-        document.body.style.overflow = '';
-        currentTender = null;
-    }
-
-    document.getElementById('overlay').addEventListener('click', e => {
-        if (e.target === e.currentTarget) closeModal();
-    });
-    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
-
-    async function modalToggleFav() {
-        if (!currentTender) return;
-        const t = currentTender;
-        const res = await fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/favorite`, {method:'POST'});
-        const {favorite} = await res.json();
-        const dataIdx = DATA.indexOf(t);
-        DATA[dataIdx].favorite = favorite;
-        t.favorite = favorite;
-        const btn = document.getElementById('m-fav-btn');
-        btn.className = `action-btn ${favorite ? 'fav-on' : ''}`;
-        btn.textContent = favorite ? '★ Favorito' : 'Favorito';
-        updateFavCount();
-        render();
-    }
-
-    async function modalToggleNI() {
-        if (!currentTender) return;
-        const t = currentTender;
-        const res = await fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/not-interested`, {method:'POST'});
-        const {not_interested} = await res.json();
-        const dataIdx = DATA.indexOf(t);
-        DATA[dataIdx].not_interested = not_interested;
-        t.not_interested = not_interested;
-        const btn = document.getElementById('m-ni-btn');
-        btn.className = `action-btn ${not_interested ? 'ni-on' : ''}`;
-        btn.textContent = not_interested ? 'Mostrar' : 'No me interesa';
-        closeModal();
-        render();
-    }
-
-    async function saveNotes() {
-        if (!currentTender) return;
-        const t = currentTender;
-        const notes = document.getElementById('m-notes').value;
-        await fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/notes`, {
-            method: 'PUT',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({notes}),
-        });
-        const dataIdx = DATA.indexOf(t);
-        DATA[dataIdx].notes = notes;
-        t.notes = notes;
-        const saved = document.getElementById('notes-saved');
-        saved.style.display = 'inline';
-        setTimeout(() => { saved.style.display = 'none'; }, 2000);
-    }
-
-    // ── Scan ──────────────────────────────────────────────────────────────────
-
-    function showToast(msg) {
-        const el = document.getElementById('toast');
-        el.textContent = msg;
-        el.classList.add('show');
-        clearTimeout(el._t);
-        el._t = setTimeout(() => el.classList.remove('show'), 4000);
-    }
-
-    async function startScan() {
-        const btn = document.getElementById('btn-scan');
-        btn.disabled = true;
-        btn.textContent = 'Escaneando...';
-        showToast('Scan iniciado, puede tomar unos minutos...');
-
-        try {
-            const res = await fetch('/api/scan', {method:'POST', headers:{'content-type':'application/json'}, body:'{}'});
-            if (res.status === 409) { showToast('Ya hay un scan en curso.'); btn.disabled = false; btn.textContent = '⟳ Escanear'; return; }
-            pollScan();
-        } catch(e) {
-            showToast('Error iniciando scan.');
-            btn.disabled = false;
-            btn.textContent = '⟳ Escanear';
-        }
-    }
-
-    function pollScan() {
-        const interval = setInterval(async () => {
-            try {
-                const res = await fetch('/api/scan/status');
-                const data = await res.json();
-                if (!data.running) {
-                    clearInterval(interval);
-                    const btn = document.getElementById('btn-scan');
-                    btn.disabled = false;
-                    btn.textContent = '⟳ Escanear';
-                    if (data.error) {
-                        showToast('Error: ' + data.error);
-                    } else if (data.last_result) {
-                        const r = data.last_result;
-                        showToast(`✓ Scan completo — ${r.new} nuevas, ${r.new_relevant} relevantes`);
-                        document.getElementById('scan-info').textContent = 'Último scan: ' + (r.completed_at || '').slice(0,16).replace('T',' ');
-                        setTimeout(() => location.reload(), 1500);
-                    }
-                }
-            } catch(e) { clearInterval(interval); }
-        }, 2500);
-    }
-
-    // Init
-    render();
 </script>
-</body>
-</html>
+<script src="/static/js/dashboard.js"></script>
+<script src="/static/js/modal.js"></script>
+<script src="/static/js/scan.js"></script>
+{% endblock %}

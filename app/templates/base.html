@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Visione{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/base.css">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <nav>
+        <a class="nav-brand" href="/">
+            <img src="/static/img/logo.png" alt="Visione" class="brand-logo">
+            Visione
+        </a>
+        <div class="nav-actions">
+            {% block nav_actions %}{% endblock %}
+            <a class="nav-link{% if request.url.path == '/' %} active{% endif %}" href="/">Dashboard</a>
+            <a class="nav-link{% if request.url.path == '/settings' %} active{% endif %}" href="/settings">Configuración</a>
+            <form action="/logout" method="post" style="display:inline">
+                <button type="submit" class="btn btn-ghost">Salir</button>
+            </form>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>
