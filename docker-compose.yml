@@ -7,7 +7,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./config.yaml:/app/config.yaml:ro
-      - ./keywords.yaml:/app/keywords.yaml:ro
+      - ./keywords.yaml:/app/keywords.yaml
     env_file:
       - .env
     healthcheck:

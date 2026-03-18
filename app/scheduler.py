@@ -66,7 +66,7 @@ def _do_scan(scan_state: dict, base_dir: Path, days_back: int | None = None) -> 
         scan_state["last_result"] = result
     except Exception as e:
         logger.exception("Error en scan")
-        scan_state["error"] = str(e)
+        scan_state["error"] = "Error interno durante el escaneo. Revisa los logs del servidor."
     finally:
         scan_state["running"] = False
 

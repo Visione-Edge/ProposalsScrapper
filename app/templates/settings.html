@@ -86,6 +86,7 @@
     {% endif %}
 
     <form method="post" action="/settings">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="kw-grid">
             <div class="kw-card">
                 <div class="kw-card-header">

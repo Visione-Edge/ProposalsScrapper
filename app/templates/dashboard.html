@@ -413,9 +413,9 @@
                 <td onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
                     <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
                 </td>
-                <td><span class="badge ${t.relevance}">${t.relevance}</span></td>
+                <td><span class="badge ${esc(t.relevance)}">${esc(t.relevance)}</span></td>
                 <td class="name-cell">${unviewedDot}<span class="title">${esc(t.name)}</span>${newBadge}
-                    ${kw.length ? `<div class="kw-preview">${kw.slice(0,4).join(', ')}</div>` : ''}</td>
+                    ${kw.length ? `<div class="kw-preview">${kw.slice(0,4).map(k => esc(k)).join(', ')}</div>` : ''}</td>
                 <td class="inst-cell" title="${esc(t.institution_name)}">${esc(t.institution_name)}</td>
                 <td title="${esc(PROC[t.procedure_type])}">${esc(t.procedure_type)}</td>
                 <td>${esc(t.status)}</td>
@@ -430,7 +430,7 @@
             const newBadge = isNew(t) ? ' <span class="new-badge">nuevo</span>' : '';
             const cardClass = t.not_interested ? 'card-ni' : (isNew(t) ? 'card-new' : (!t.viewed ? 'card-unviewed' : ''));
             const mUnviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
-            return `<div class="m-card rel-${t.relevance} ${cardClass}" onclick="openModal(${i})">
+            return `<div class="m-card rel-${esc(t.relevance)} ${cardClass}" onclick="openModal(${i})">
                 <div class="m-card-top">
                     <div class="m-card-star" onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
                         <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
@@ -438,9 +438,9 @@
                     <div class="m-card-body">
                         <div class="m-card-title">${mUnviewedDot}${esc(t.name)}${newBadge}</div>
                         <div class="m-card-inst">${esc(t.institution_name)}</div>
-                        ${kw.length ? `<div class="m-card-kw">${kw.slice(0,3).join(', ')}</div>` : ''}
+                        ${kw.length ? `<div class="m-card-kw">${kw.slice(0,3).map(k => esc(k)).join(', ')}</div>` : ''}
                     </div>
-                    <div class="m-card-badge"><span class="badge ${t.relevance}">${t.relevance}</span></div>
+                    <div class="m-card-badge"><span class="badge ${esc(t.relevance)}">${esc(t.relevance)}</span></div>
                 </div>
                 <div class="m-card-footer">
                     <div><span>Pub:</span> ${d(t.registration_date)}</div>

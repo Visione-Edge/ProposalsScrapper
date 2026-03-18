@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import secrets
@@ -15,9 +16,9 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from pydantic import BaseModel, Field
 from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 
 from sicop.storage import Storage
 
@@ -30,7 +31,14 @@ BASE_DIR = Path(__file__).parent.parent
 auth_logger = logging.getLogger("auth")
 
 # ── Rate Limiting ────────────────────────────────────────────────────────────
-limiter = Limiter(key_func=get_remote_address)
+def get_real_ip(request: Request) -> str:
+    """Obtiene la IP real del cliente desde X-Real-IP (seteado por nginx)."""
+    forwarded = request.headers.get("X-Real-IP")
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+limiter = Limiter(key_func=get_real_ip)
 
 # ── Mensajes de error predefinidos ───────────────────────────────────────────
 LOGIN_ERROR_MESSAGES = {
@@ -112,6 +120,7 @@ async def login_page(request: Request, error: str = ""):
         value=csrf_token,
         httponly=True,
         samesite="strict",
+        secure=True,
         max_age=600,
     )
     return response
@@ -141,8 +150,8 @@ async def login(
 
     # Verificar CSRF token (Double Submit Cookie pattern)
     cookie_csrf = request.cookies.get("csrf_token", "")
-    if not csrf_token or not cookie_csrf or csrf_token != cookie_csrf:
-        auth_logger.warning(f"Intento de login fallido desde IP {client_ip}")
+    if not csrf_token or not cookie_csrf or not hmac.compare_digest(csrf_token, cookie_csrf):
+        auth_logger.warning("Intento de login fallido desde IP %s", client_ip)
         new_csrf = secrets.token_hex(32)
         response = templates.TemplateResponse(
             "login.html",
@@ -158,18 +167,19 @@ async def login(
             value=new_csrf,
             httponly=True,
             samesite="strict",
+            secure=True,
             max_age=600,
         )
         return response
 
     if authenticate(username, password):
-        auth_logger.info(f"Login exitoso para usuario desde IP {client_ip}")
+        auth_logger.info("Login exitoso para usuario desde IP %s", client_ip)
         resp = RedirectResponse("/", status_code=302)
         create_session(resp, username)
         resp.delete_cookie("csrf_token")
         return resp
 
-    auth_logger.warning(f"Intento de login fallido desde IP {client_ip}")
+    auth_logger.warning("Intento de login fallido desde IP %s", client_ip)
     new_csrf = secrets.token_hex(32)
     response = templates.TemplateResponse(
         "login.html",
@@ -185,6 +195,7 @@ async def login(
         value=new_csrf,
         httponly=True,
         samesite="strict",
+        secure=True,
         max_age=600,
     )
     return response
@@ -233,12 +244,13 @@ async def toggle_not_interested(cartel_no: str, cartel_seq: str):
     return {"not_interested": value}
 
 
+class NotesPayload(BaseModel):
+    notes: str = Field(default="", max_length=10000)
+
 @app.put("/api/tender/{cartel_no}/{cartel_seq}/notes")
-async def save_notes(cartel_no: str, cartel_seq: str, request: Request):
-    body = await request.json()
-    notes = body.get("notes", "")
+async def save_notes(cartel_no: str, cartel_seq: str, payload: NotesPayload):
     with get_storage() as storage:
-        storage.save_notes(cartel_no, cartel_seq, notes)
+        storage.save_notes(cartel_no, cartel_seq, payload.notes)
     return {"ok": True}
 
 
@@ -253,8 +265,14 @@ async def mark_viewed(cartel_no: str, cartel_seq: str):
 
 @app.post("/api/scan")
 async def start_scan(request: Request):
-    body = await request.json() if request.headers.get("content-type") == "application/json" else {}
-    days = body.get("days") if isinstance(body, dict) else None
+    days = None
+    if request.headers.get("content-type") == "application/json":
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and isinstance(body.get("days"), int):
+                days = max(1, min(body["days"], 30))
+        except Exception:
+            pass
     started = trigger_scan(scan_state, BASE_DIR, days_back=days)
     if not started:
         return JSONResponse({"status": "already_running"}, status_code=409)
@@ -288,10 +306,20 @@ def save_keywords(data: dict) -> None:
 @app.get("/settings", response_class=HTMLResponse)
 async def settings_page(request: Request, saved: str = ""):
     kw = load_keywords()
-    return templates.TemplateResponse(
+    csrf_token = secrets.token_hex(32)
+    response = templates.TemplateResponse(
         "settings.html",
-        {"request": request, "kw": kw, "saved": saved == "1"},
+        {"request": request, "kw": kw, "saved": saved == "1", "csrf_token": csrf_token},
     )
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=True,
+        samesite="strict",
+        secure=True,
+        max_age=600,
+    )
+    return response
 
 
 @app.post("/settings")
@@ -300,7 +328,12 @@ async def settings_save(
     alta: str = Form(default=""),
     media: str = Form(default=""),
     baja: str = Form(default=""),
+    csrf_token: str = Form(default=""),
 ):
+    cookie_csrf = request.cookies.get("csrf_token", "")
+    if not csrf_token or not cookie_csrf or not hmac.compare_digest(csrf_token, cookie_csrf):
+        return RedirectResponse("/settings", status_code=302)
+
     def parse(text: str) -> list[str]:
         return [line.strip() for line in text.splitlines() if line.strip()]
 
