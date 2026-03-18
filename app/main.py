@@ -138,15 +138,25 @@ async def login(
 
     # Validar que username y password no estén vacíos
     if not username.strip() or not password:
-        return templates.TemplateResponse(
+        new_csrf = secrets.token_hex(32)
+        response = templates.TemplateResponse(
             "login.html",
             {
                 "request": request,
                 "error": "Usuario o contraseña incorrectos",
-                "csrf_token": secrets.token_hex(32),
+                "csrf_token": new_csrf,
             },
             status_code=401,
         )
+        response.set_cookie(
+            key="csrf_token",
+            value=new_csrf,
+            httponly=True,
+            samesite="strict",
+            secure=SECURE_COOKIES,
+            max_age=600,
+        )
+        return response
 
     # Verificar CSRF token (Double Submit Cookie pattern)
     cookie_csrf = request.cookies.get("csrf_token", "")
