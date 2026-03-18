@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -13,6 +15,9 @@ load_dotenv(Path(__file__).parent.parent / ".env")
 from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from sicop.storage import Storage
 
@@ -20,6 +25,20 @@ from .auth import authenticate, clear_session, create_session, verify_session
 from .scheduler import setup_scheduler, trigger_scan
 
 BASE_DIR = Path(__file__).parent.parent
+
+# ── Logging ──────────────────────────────────────────────────────────────────
+auth_logger = logging.getLogger("auth")
+
+# ── Rate Limiting ────────────────────────────────────────────────────────────
+limiter = Limiter(key_func=get_remote_address)
+
+# ── Mensajes de error predefinidos ───────────────────────────────────────────
+LOGIN_ERROR_MESSAGES = {
+    "invalid": "Usuario o contraseña incorrectos",
+    "expired": "Tu sesión ha expirado",
+    "csrf": "Token de seguridad inválido. Intenta de nuevo.",
+    "rate": "Demasiados intentos. Intenta de nuevo en unos minutos.",
+}
 
 scan_state: dict = {
     "running": False,
@@ -51,8 +70,22 @@ async def lifespan(app: FastAPI):
     scheduler.shutdown()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app.state.limiter = limiter
 templates = Jinja2Templates(directory=str(BASE_DIR / "app" / "templates"))
+
+
+# ── Rate limit exception handler ────────────────────────────────────────────
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+    return templates.TemplateResponse(
+        "login.html",
+        {
+            "request": request,
+            "error": "Demasiados intentos. Intenta de nuevo en unos minutos.",
+        },
+        status_code=429,
+    )
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
@@ -68,20 +101,93 @@ async def require_auth(request: Request, call_next):
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
-    return templates.TemplateResponse("login.html", {"request": request, "error": error})
+    error_message = LOGIN_ERROR_MESSAGES.get(error, "")
+    csrf_token = secrets.token_hex(32)
+    response = templates.TemplateResponse(
+        "login.html",
+        {"request": request, "error": error_message, "csrf_token": csrf_token},
+    )
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=True,
+        samesite="strict",
+        max_age=600,
+    )
+    return response
 
 
 @app.post("/login")
-async def login(request: Request, username: str = Form(), password: str = Form()):
+@limiter.limit("5/minute")
+async def login(
+    request: Request,
+    username: str = Form(max_length=254),
+    password: str = Form(max_length=128),
+    csrf_token: str = Form(default=""),
+):
+    client_ip = request.client.host if request.client else "unknown"
+
+    # Validar que username y password no estén vacíos
+    if not username.strip() or not password:
+        return templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Usuario o contraseña incorrectos",
+                "csrf_token": secrets.token_hex(32),
+            },
+            status_code=401,
+        )
+
+    # Verificar CSRF token (Double Submit Cookie pattern)
+    cookie_csrf = request.cookies.get("csrf_token", "")
+    if not csrf_token or not cookie_csrf or csrf_token != cookie_csrf:
+        auth_logger.warning(f"Intento de login fallido desde IP {client_ip}")
+        new_csrf = secrets.token_hex(32)
+        response = templates.TemplateResponse(
+            "login.html",
+            {
+                "request": request,
+                "error": "Token de seguridad inválido. Intenta de nuevo.",
+                "csrf_token": new_csrf,
+            },
+            status_code=403,
+        )
+        response.set_cookie(
+            key="csrf_token",
+            value=new_csrf,
+            httponly=True,
+            samesite="strict",
+            max_age=600,
+        )
+        return response
+
     if authenticate(username, password):
+        auth_logger.info(f"Login exitoso para usuario desde IP {client_ip}")
         resp = RedirectResponse("/", status_code=302)
-        create_session(resp)
+        create_session(resp, username)
+        resp.delete_cookie("csrf_token")
         return resp
-    return templates.TemplateResponse(
+
+    auth_logger.warning(f"Intento de login fallido desde IP {client_ip}")
+    new_csrf = secrets.token_hex(32)
+    response = templates.TemplateResponse(
         "login.html",
-        {"request": request, "error": "Usuario o contraseña incorrectos"},
+        {
+            "request": request,
+            "error": "Usuario o contraseña incorrectos",
+            "csrf_token": new_csrf,
+        },
         status_code=401,
     )
+    response.set_cookie(
+        key="csrf_token",
+        value=new_csrf,
+        httponly=True,
+        samesite="strict",
+        max_age=600,
+    )
+    return response
 
 
 @app.post("/logout")

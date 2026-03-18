@@ -2,44 +2,64 @@
 
 from __future__ import annotations
 
+import hmac
 import os
+import secrets
+import time
 
 import bcrypt
 from fastapi import Request, Response
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
-SECRET_KEY = os.environ.get("SECRET_KEY", "cambia-esto-en-produccion-por-favor")
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError(
+        "SECRET_KEY no esta configurada. "
+        "Establece la variable de entorno SECRET_KEY con un valor aleatorio de al menos 32 bytes."
+    )
+
 COOKIE_NAME = "sicop_session"
-COOKIE_MAX_AGE = 60 * 60 * 24 * 7  # 7 días
+COOKIE_MAX_AGE = 60 * 60 * 8  # 8 horas
 
 _serializer = URLSafeTimedSerializer(SECRET_KEY)
+
+# Hash pre-calculado para mantener timing constante cuando el username es inválido.
+_DUMMY_HASH = bcrypt.hashpw(b"dummy-password", bcrypt.gensalt()).decode()
 
 
 def get_credentials() -> tuple[str, str]:
     username = os.environ.get("SICOP_USERNAME", "admin")
     password_hash = os.environ.get("SICOP_PASSWORD_HASH", "")
+    if not password_hash:
+        raise RuntimeError(
+            "SICOP_PASSWORD_HASH no esta configurada. "
+            "Establece la variable de entorno SICOP_PASSWORD_HASH con un hash bcrypt valido."
+        )
     return username, password_hash
 
 
 def authenticate(username: str, password: str) -> bool:
     valid_user, password_hash = get_credentials()
-    if username != valid_user:
-        return False
-    if not password_hash:
-        # Sin hash configurado: comparar con SICOP_PASSWORD en texto plano (solo dev)
-        plain = os.environ.get("SICOP_PASSWORD", "")
-        return bool(plain and password == plain)
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    username_ok = hmac.compare_digest(username, valid_user)
+    # Siempre ejecutar bcrypt.checkpw para mantener timing constante.
+    hash_to_check = password_hash if username_ok else _DUMMY_HASH
+    password_ok = bcrypt.checkpw(password.encode(), hash_to_check.encode())
+    return username_ok and password_ok
 
 
-def create_session(response: Response) -> None:
-    token = _serializer.dumps({"auth": True})
+def create_session(response: Response, username: str) -> None:
+    token = _serializer.dumps({
+        "session_id": secrets.token_hex(16),
+        "username": username,
+        "created_at": int(time.time()),
+    })
     response.set_cookie(
         COOKIE_NAME,
         token,
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
+        secure=True,
     )
 
 
