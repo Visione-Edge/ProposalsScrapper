@@ -133,7 +133,7 @@ def send_email_new_tenders(smtp_cfg: dict, tenders: list[tuple["Tender", "Classi
     html = f"""<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:24px">
 <div style="max-width:800px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
   <div style="background:#2c3e50;padding:20px 28px">
-    <h1 style="color:white;margin:0;font-size:18px">SICOP Monitor — Licitaciones Nuevas</h1>
+    <h1 style="color:white;margin:0;font-size:18px">Proposals Center — Licitaciones Nuevas</h1>
     <p style="color:rgba(255,255,255,0.7);margin:6px 0 0;font-size:13px">{len(tenders)} licitacion{'es' if len(tenders)!=1 else ''} relevante{'s' if len(tenders)!=1 else ''} encontrada{'s' if len(tenders)!=1 else ''}</p>
   </div>
   <div style="padding:24px">
@@ -178,7 +178,7 @@ def send_email_contract_updates(smtp_cfg: dict, tenders: list) -> None:
     html = f"""<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:24px">
 <div style="max-width:700px;margin:0 auto;background:white;border-radius:10px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)">
   <div style="background:#065f46;padding:20px 28px">
-    <h1 style="color:white;margin:0;font-size:18px">SICOP Monitor — Actualización de Favoritos</h1>
+    <h1 style="color:white;margin:0;font-size:18px">Proposals Center — Actualización de Favoritos</h1>
     <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:13px">{len(tenders)} licitacion{'es' if len(tenders)!=1 else ''} favorita{'s' if len(tenders)!=1 else ''} en estado de adjudicación/contrato</p>
   </div>
   <div style="padding:24px">
