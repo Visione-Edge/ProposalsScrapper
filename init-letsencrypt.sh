@@ -5,7 +5,7 @@
 
 set -e
 
-domains=(sicop.visione-edge.com)
+domains=(proposals.visione-edge.com)
 rsa_key_size=4096
 data_path="./data/certbot"
 email="admin@visione-edge.com"
