@@ -13,7 +13,7 @@ import yaml
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).parent.parent / ".env")
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -103,6 +103,10 @@ async def require_auth(request: Request, call_next):
     if request.url.path == "/login":
         return await call_next(request)
     if not verify_session(request):
+        # Para sub-resources (favicon, etc.) devolver 401 en vez de
+        # redirigir a /login, lo que sobreescribiría la cookie CSRF.
+        if request.url.path != "/" and "text/html" not in request.headers.get("accept", ""):
+            return Response(status_code=401)
         return RedirectResponse("/login", status_code=302)
     return await call_next(request)
 
@@ -110,19 +114,23 @@ async def require_auth(request: Request, call_next):
 @app.get("/login", response_class=HTMLResponse)
 async def login_page(request: Request, error: str = ""):
     error_message = LOGIN_ERROR_MESSAGES.get(error, "")
-    csrf_token = secrets.token_hex(32)
+    # Reutilizar el token CSRF existente para evitar que requests
+    # concurrentes (favicon, etc.) sobreescriban la cookie.
+    existing_csrf = request.cookies.get("csrf_token")
+    csrf_token = existing_csrf if existing_csrf else secrets.token_hex(32)
     response = templates.TemplateResponse(
         "login.html",
         {"request": request, "error": error_message, "csrf_token": csrf_token},
     )
-    response.set_cookie(
-        key="csrf_token",
-        value=csrf_token,
-        httponly=True,
-        samesite="strict",
-        secure=SECURE_COOKIES,
-        max_age=600,
-    )
+    if not existing_csrf:
+        response.set_cookie(
+            key="csrf_token",
+            value=csrf_token,
+            httponly=True,
+            samesite="lax",
+            secure=SECURE_COOKIES,
+            max_age=600,
+        )
     return response
 
 
@@ -152,7 +160,7 @@ async def login(
             key="csrf_token",
             value=new_csrf,
             httponly=True,
-            samesite="strict",
+            samesite="lax",
             secure=SECURE_COOKIES,
             max_age=600,
         )
@@ -176,7 +184,7 @@ async def login(
             key="csrf_token",
             value=new_csrf,
             httponly=True,
-            samesite="strict",
+            samesite="lax",
             secure=SECURE_COOKIES,
             max_age=600,
         )
@@ -204,7 +212,7 @@ async def login(
         key="csrf_token",
         value=new_csrf,
         httponly=True,
-        samesite="strict",
+        samesite="lax",
         secure=SECURE_COOKIES,
         max_age=600,
     )
