@@ -22,7 +22,7 @@ from slowapi.errors import RateLimitExceeded
 
 from sicop.storage import Storage
 
-from .auth import authenticate, clear_session, create_session, verify_session
+from .auth import SECURE_COOKIES, authenticate, clear_session, create_session, verify_session
 from .scheduler import setup_scheduler, trigger_scan
 
 BASE_DIR = Path(__file__).parent.parent
@@ -120,7 +120,7 @@ async def login_page(request: Request, error: str = ""):
         value=csrf_token,
         httponly=True,
         samesite="strict",
-        secure=True,
+        secure=SECURE_COOKIES,
         max_age=600,
     )
     return response
@@ -167,7 +167,7 @@ async def login(
             value=new_csrf,
             httponly=True,
             samesite="strict",
-            secure=True,
+            secure=SECURE_COOKIES,
             max_age=600,
         )
         return response
@@ -195,7 +195,7 @@ async def login(
         value=new_csrf,
         httponly=True,
         samesite="strict",
-        secure=True,
+        secure=SECURE_COOKIES,
         max_age=600,
     )
     return response
@@ -316,7 +316,7 @@ async def settings_page(request: Request, saved: str = ""):
         value=csrf_token,
         httponly=True,
         samesite="strict",
-        secure=True,
+        secure=SECURE_COOKIES,
         max_age=600,
     )
     return response

@@ -20,6 +20,7 @@ if not SECRET_KEY:
 
 COOKIE_NAME = "sicop_session"
 COOKIE_MAX_AGE = 60 * 60 * 8  # 8 horas
+SECURE_COOKIES = os.environ.get("SECURE_COOKIES", "true").lower() != "false"
 
 _serializer = URLSafeTimedSerializer(SECRET_KEY)
 
@@ -59,7 +60,7 @@ def create_session(response: Response, username: str) -> None:
         max_age=COOKIE_MAX_AGE,
         httponly=True,
         samesite="lax",
-        secure=True,
+        secure=SECURE_COOKIES,
     )
 
 
