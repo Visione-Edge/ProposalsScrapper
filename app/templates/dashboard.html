@@ -125,6 +125,11 @@
         .toast { position: fixed; bottom: 24px; right: 24px; background: #1f2937; color: white; padding: 12px 20px; border-radius: 8px; font-size: 0.85rem; z-index: 100; box-shadow: 0 4px 16px rgba(0,0,0,0.2); display: none; max-width: 300px; }
         .toast.show { display: block; }
 
+        /* VIEWED */
+        .unviewed-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #3b82f6; margin-right: 5px; vertical-align: middle; flex-shrink: 0; }
+        tr.unviewed .title { font-weight: 700; }
+        .stat.unviewed-stat { border-left-color: #3b82f6; }
+
         @media (max-width: 768px) {
             .filters { flex-direction: column; }
             .filters input[type="text"] { min-width: 100%; }
@@ -176,6 +181,10 @@
         <div class="stat fav">
             <div class="n" id="fav-count">{{ stats.favorites }}</div>
             <div class="l">Favoritos</div>
+        </div>
+        <div class="stat unviewed-stat">
+            <div class="n" id="unviewed-count">{{ stats.unviewed }}</div>
+            <div class="l">No vistas</div>
         </div>
     </div>
 
@@ -321,13 +330,14 @@
         tbody.innerHTML = rows.map((t, i) => {
             const kw = Array.isArray(t.matched_keywords) ? t.matched_keywords : [];
             const newBadge = isNew(t) ? '<span class="new-badge">nuevo</span>' : '';
-            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) ? 'is-new' : '');
+            const rowClass = t.not_interested ? 'not-interested-row' : (isNew(t) ? 'is-new' : (!t.viewed ? 'unviewed' : ''));
+            const unviewedDot = !t.viewed ? '<span class="unviewed-dot"></span>' : '';
             return `<tr class="${rowClass}" onclick="openModal(${i})">
                 <td onclick="event.stopPropagation(); toggleFavRow(event, ${i})">
                     <button class="star-btn ${t.favorite ? 'on' : ''}" title="Favorito">★</button>
                 </td>
                 <td><span class="badge ${t.relevance}">${t.relevance}</span></td>
-                <td class="name-cell"><span class="title">${esc(t.name)}</span>${newBadge}
+                <td class="name-cell">${unviewedDot}<span class="title">${esc(t.name)}</span>${newBadge}
                     ${kw.length ? `<div class="kw-preview">${kw.slice(0,4).join(', ')}</div>` : ''}</td>
                 <td class="inst-cell" title="${esc(t.institution_name)}">${esc(t.institution_name)}</td>
                 <td title="${esc(PROC[t.procedure_type])}">${esc(t.procedure_type)}</td>
@@ -382,6 +392,16 @@
     function openModal(i) {
         const t = window._filtered[i];
         currentTender = t;
+
+        // Mark as viewed
+        if (!t.viewed) {
+            fetch(`/api/tender/${t.cartel_no}/${t.cartel_seq}/viewed`, {method:'POST'});
+            const dataIdx = DATA.indexOf(t);
+            DATA[dataIdx].viewed = 1;
+            t.viewed = 1;
+            const cnt = document.getElementById('unviewed-count');
+            if (cnt) cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
+        }
 
         document.getElementById('m-title').textContent = t.name || '—';
 

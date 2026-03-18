@@ -11,10 +11,18 @@ import yaml
 
 from .classifier import Classification, RelevanceClassifier
 from .client import SICOPClient, Tender
-from .notifier import send_discord, send_slack
+from .notifier import send_discord, send_email_contract_updates, send_email_new_tenders, send_slack
 from .storage import Storage
 
 logger = logging.getLogger(__name__)
+
+# Status strings that indicate a tender has been awarded/contracted
+_CONTRACT_STATUSES = {"adjudicado", "contratado", "en contrato", "adjudicación"}
+
+
+def _is_contract_status(status: str) -> bool:
+    s = status.lower()
+    return any(cs in s for cs in _CONTRACT_STATUSES)
 
 
 def load_config(base_dir: Path) -> dict:
@@ -67,6 +75,7 @@ def run_scan(
             log(f"Licitaciones obtenidas de API: {len(tenders)}")
 
             new_relevant: list[tuple[Tender, Classification]] = []
+            contract_updates: list[Tender] = []
             new_count = 0
 
             for tender in tenders:
@@ -75,6 +84,13 @@ def run_scan(
                     continue
 
                 is_new = (tender.cartel_no, tender.cartel_seq) not in known_ids
+
+                # Check for contract status change on favorites before upserting
+                if not is_new and _is_contract_status(tender.status):
+                    meta = storage.get_tender_meta(tender.cartel_no, tender.cartel_seq)
+                    if meta and meta["favorite"] and not _is_contract_status(meta["status"]):
+                        contract_updates.append(tender)
+
                 storage.upsert_tender(tender, classification.level, classification.matched_keywords)
 
                 if is_new:
@@ -86,10 +102,10 @@ def run_scan(
 
     log(f"Nuevas: {new_count} | Relevantes nuevas: {len(new_relevant)}")
 
-    if send_notifications and new_relevant:
+    if send_notifications:
         notif_cfg = cfg.get("notifications", {})
         slack_cfg = notif_cfg.get("slack", {})
-        if slack_cfg.get("enabled") and slack_cfg.get("webhook_url"):
+        if new_relevant and slack_cfg.get("enabled") and slack_cfg.get("webhook_url"):
             try:
                 send_slack(slack_cfg["webhook_url"], new_relevant)
                 log("Notificación Slack enviada")
@@ -97,17 +113,33 @@ def run_scan(
                 log(f"Error Slack: {e}")
 
         discord_cfg = notif_cfg.get("discord", {})
-        if discord_cfg.get("enabled") and discord_cfg.get("webhook_url"):
+        if new_relevant and discord_cfg.get("enabled") and discord_cfg.get("webhook_url"):
             try:
                 send_discord(discord_cfg["webhook_url"], new_relevant)
                 log("Notificación Discord enviada")
             except Exception as e:
                 log(f"Error Discord: {e}")
 
+        email_cfg = notif_cfg.get("email", {})
+        if email_cfg.get("enabled"):
+            if new_relevant and email_cfg.get("notify_on_new", True):
+                try:
+                    send_email_new_tenders(email_cfg, new_relevant)
+                    log("Notificación email enviada")
+                except Exception as e:
+                    log(f"Error email nuevas: {e}")
+            if contract_updates and email_cfg.get("notify_on_contract", True):
+                try:
+                    send_email_contract_updates(email_cfg, contract_updates)
+                    log(f"Notificación email contratos enviada ({len(contract_updates)})")
+                except Exception as e:
+                    log(f"Error email contratos: {e}")
+
     return {
         "fetched": len(tenders),
         "new": new_count,
         "new_relevant": len(new_relevant),
+        "contract_updates": len(contract_updates),
         "total_in_db": stats["total"],
         "completed_at": datetime.now().isoformat(timespec="seconds"),
     }

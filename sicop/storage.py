@@ -56,10 +56,12 @@ class Storage:
             ("favorite", "INTEGER DEFAULT 0"),
             ("not_interested", "INTEGER DEFAULT 0"),
             ("notes", "TEXT DEFAULT ''"),
+            ("viewed", "INTEGER DEFAULT 0"),   # ADD THIS
         ]:
             if col not in existing:
                 self._conn.execute(f"ALTER TABLE tenders ADD COLUMN {col} {definition}")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_favorite ON tenders(favorite)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_viewed ON tenders(viewed)")
         self._conn.commit()
 
     def close(self) -> None:
@@ -140,6 +142,21 @@ class Storage:
         )
         self._conn.commit()
 
+    def mark_viewed(self, cartel_no: str, cartel_seq: str) -> None:
+        self._conn.execute(
+            "UPDATE tenders SET viewed=1 WHERE cartel_no=? AND cartel_seq=?",
+            (cartel_no, cartel_seq),
+        )
+        self._conn.commit()
+
+    def get_tender_meta(self, cartel_no: str, cartel_seq: str) -> dict | None:
+        """Returns {status, favorite} for an existing tender, or None if not found."""
+        row = self._conn.execute(
+            "SELECT status, favorite FROM tenders WHERE cartel_no=? AND cartel_seq=?",
+            (cartel_no, cartel_seq),
+        ).fetchone()
+        return dict(row) if row else None
+
     def get_all_tenders(self) -> list[dict]:
         rows = self._conn.execute(
             "SELECT * FROM tenders ORDER BY registration_date DESC"
@@ -158,6 +175,7 @@ class Storage:
     def get_stats(self) -> dict:
         total = self._conn.execute("SELECT COUNT(*) FROM tenders").fetchone()[0]
         favorites = self._conn.execute("SELECT COUNT(*) FROM tenders WHERE favorite=1").fetchone()[0]
+        unviewed = self._conn.execute("SELECT COUNT(*) FROM tenders WHERE viewed=0").fetchone()[0]
         by_relevance: dict = {}
         for row in self._conn.execute("SELECT relevance, COUNT(*) as cnt FROM tenders GROUP BY relevance"):
             by_relevance[row["relevance"]] = row["cnt"]
@@ -169,6 +187,7 @@ class Storage:
         return {
             "total": total,
             "favorites": favorites,
+            "unviewed": unviewed,
             "by_relevance": by_relevance,
             "by_institution": by_institution,
         }
