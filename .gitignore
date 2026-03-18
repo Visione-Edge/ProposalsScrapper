@@ -1,0 +1,23 @@
+# Environment
+.env
+
+# Data
+data/
+*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# OS
+.DS_Store
+
+# Claude memory
+.claude/

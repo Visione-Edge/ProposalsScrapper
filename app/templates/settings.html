@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICOP Monitor — Configuración</title>
+    <style>
+        :root {
+            --alta: #e74c3c; --media: #f39c12; --baja: #3498db;
+            --bg: #f0f2f5; --card: #fff; --text: #1a2332; --muted: #6b7280;
+            --border: #e5e7eb; --primary: #2c3e50;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+        nav { background: var(--primary); color: white; height: 54px; display: flex; align-items: center; justify-content: space-between; padding: 0 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .nav-brand { font-weight: 700; font-size: 1rem; display: flex; align-items: center; gap: 8px; text-decoration: none; color: white; }
+        .nav-brand .dot { width: 8px; height: 8px; border-radius: 50%; background: #2ecc71; display: inline-block; }
+        .nav-right { display: flex; align-items: center; gap: 12px; }
+        .nav-link { color: rgba(255,255,255,0.8); text-decoration: none; font-size: 0.85rem; padding: 6px 10px; border-radius: 6px; }
+        .nav-link:hover, .nav-link.active { background: rgba(255,255,255,0.12); color: white; }
+        .btn-logout { background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+        .btn-logout:hover { background: rgba(255,255,255,0.22); }
+
+        .container { max-width: 860px; margin: 0 auto; padding: 32px 24px; }
+        h1 { font-size: 1.3rem; font-weight: 700; margin-bottom: 6px; }
+        .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+
+        .toast-success { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; padding: 12px 18px; border-radius: 8px; font-size: 0.88rem; margin-bottom: 24px; display: flex; align-items: center; gap: 8px; }
+
+        .kw-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 28px; }
+        .kw-card { background: var(--card); border-radius: 10px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); overflow: hidden; }
+        .kw-card-header { padding: 14px 18px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .kw-badge { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 0.72rem; font-weight: 700; color: white; text-transform: uppercase; }
+        .kw-badge.alta { background: var(--alta); }
+        .kw-badge.media { background: var(--media); }
+        .kw-badge.baja { background: var(--baja); }
+        .kw-card-header .count { font-size: 0.78rem; color: var(--muted); margin-left: auto; }
+        .kw-card-body { padding: 12px 18px 16px; }
+        .kw-hint { font-size: 0.78rem; color: var(--muted); margin-bottom: 8px; }
+        textarea { width: 100%; border: 1px solid var(--border); border-radius: 6px; padding: 10px 12px; font-size: 0.85rem; font-family: inherit; resize: vertical; min-height: 260px; line-height: 1.6; outline: none; color: var(--text); }
+        textarea:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.12); }
+
+        .actions { display: flex; gap: 12px; align-items: center; }
+        .btn-save { background: var(--primary); color: white; border: none; padding: 10px 28px; border-radius: 8px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .btn-save:hover { background: #34495e; }
+        .btn-cancel { color: var(--muted); text-decoration: none; font-size: 0.88rem; padding: 10px 14px; }
+        .btn-cancel:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+
+<nav>
+    <a class="nav-brand" href="/"><span class="dot"></span> SICOP Monitor</a>
+    <div class="nav-right">
+        <a class="nav-link" href="/">Dashboard</a>
+        <a class="nav-link active" href="/settings">Configuracion</a>
+        <form action="/logout" method="post" style="display:inline">
+            <button type="submit" class="btn-logout">Salir</button>
+        </form>
+    </div>
+</nav>
+
+<div class="container">
+    <h1>Palabras clave de clasificacion</h1>
+    <p class="subtitle">Una keyword por linea. Se buscan en titulo e institucion de cada licitacion (sin distinguir mayusculas). Se asigna el nivel mas alto que haga match.</p>
+
+    {% if saved %}
+    <div class="toast-success">
+        Cambios guardados correctamente. El proximo scan usara las nuevas palabras clave.
+    </div>
+    {% endif %}
+
+    <form method="post" action="/settings">
+        <div class="kw-grid">
+            <div class="kw-card">
+                <div class="kw-card-header">
+                    <span class="kw-badge alta">Alta</span>
+                    <span class="count" id="count-alta">{{ kw.get('alta', []) | length }} keywords</span>
+                </div>
+                <div class="kw-card-body">
+                    <p class="kw-hint">Directamente sobre software, sistemas, desarrollo digital.</p>
+                    <textarea name="alta" id="ta-alta" oninput="updateCount('alta')">{{ kw.get('alta', []) | join('\n') }}</textarea>
+                </div>
+            </div>
+
+            <div class="kw-card">
+                <div class="kw-card-header">
+                    <span class="kw-badge media">Media</span>
+                    <span class="count" id="count-media">{{ kw.get('media', []) | length }} keywords</span>
+                </div>
+                <div class="kw-card-body">
+                    <p class="kw-hint">Tecnologia en general, infraestructura, telecomunicaciones.</p>
+                    <textarea name="media" id="ta-media" oninput="updateCount('media')">{{ kw.get('media', []) | join('\n') }}</textarea>
+                </div>
+            </div>
+
+            <div class="kw-card">
+                <div class="kw-card-header">
+                    <span class="kw-badge baja">Baja</span>
+                    <span class="count" id="count-baja">{{ kw.get('baja', []) | length }} keywords</span>
+                </div>
+                <div class="kw-card-body">
+                    <p class="kw-hint">Hardware, equipos, perifericos, licencias de escritorio.</p>
+                    <textarea name="baja" id="ta-baja" oninput="updateCount('baja')">{{ kw.get('baja', []) | join('\n') }}</textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="actions">
+            <button type="submit" class="btn-save">Guardar cambios</button>
+            <a href="/" class="btn-cancel">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+<script>
+    function updateCount(level) {
+        const ta = document.getElementById('ta-' + level);
+        const lines = ta.value.split('\n').filter(l => l.trim()).length;
+        document.getElementById('count-' + level).textContent = lines + ' keywords';
+    }
+</script>
+</body>
+</html>

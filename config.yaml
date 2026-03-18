@@ -1,0 +1,38 @@
+# Configuración general del monitor de licitaciones SICOP
+
+# Cuántas licitaciones traer por página (max 100)
+page_size: 50
+
+# Máximo de páginas a recorrer por ejecución (0 = sin límite)
+max_pages: 0
+
+# Días hacia atrás a consultar (para scan diario, 3 es suficiente)
+days_back: 3
+
+# Segundos de espera entre requests a la API
+request_delay: 1.0
+
+# Base de datos SQLite donde se guardan las licitaciones vistas
+database: data/licitaciones.db
+
+# Archivo HTML del dashboard
+dashboard_output: data/dashboard.html
+
+# Niveles mínimos de relevancia para notificar (alta, media, baja)
+notify_min_relevance: media
+
+# Notificaciones — deshabilitadas por default
+notifications:
+  slack:
+    enabled: false
+    webhook_url: ""
+  discord:
+    enabled: false
+    webhook_url: ""
+
+# Filtros opcionales de tipos de procedimiento a incluir
+# (vacío = todos). Códigos: LN, LI, LA, PP, CD, CE, RE, LD
+procedure_types: []
+
+# Filtros opcionales de instituciones (por código). Vacío = todas
+institutions: []

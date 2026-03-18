@@ -1,0 +1,127 @@
+# Palabras clave para clasificar licitaciones por relevancia.
+# Editar este archivo para ajustar la clasificación sin tocar código.
+#
+# Cada nivel tiene una lista de palabras/frases. Se buscan en el
+# título y descripción de la licitación (case-insensitive).
+# Se asigna el nivel más alto que haga match.
+
+alta:
+  - software
+  - desarrollo de software
+  - sistema de información
+  - sistemas de información
+  - aplicación web
+  - aplicaciones web
+  - plataforma digital
+  - plataformas digitales
+  - desarrollo de aplicaciones
+  - desarrollo de sistemas
+  - página web
+  - sitio web
+  - portal web
+  - app móvil
+  - aplicación móvil
+  - aplicaciones móviles
+  - transformación digital
+  - digitalización
+  - automatización de procesos
+  - inteligencia artificial
+  - machine learning
+  - aprendizaje automático
+  - ciencia de datos
+  - analítica de datos
+  - big data
+  - base de datos
+  - bases de datos
+  - cloud computing
+  - computación en la nube
+  - nube pública
+  - microservicios
+  - API
+  - backend
+  - frontend
+  - full stack
+  - devops
+  - integración de sistemas
+  - ERP
+  - CRM
+  - business intelligence
+  - chatbot
+  - firma digital
+  - ciberseguridad
+  - seguridad informática
+  - seguridad de la información
+  - pruebas de software
+  - testing
+  - QA
+  - aseguramiento de calidad
+  - consultoría en tecnología
+  - consultoría TI
+  - consultoría informática
+  - servicios de TI
+  - fábrica de software
+  - mantenimiento de software
+  - soporte de software
+  - licenciamiento de software
+  - SaaS
+  - PaaS
+  - IaaS
+
+media:
+  - tecnologías de información
+  - informática
+  - telecomunicaciones
+  - infraestructura tecnológica
+  - centro de datos
+  - data center
+  - servidores
+  - virtualización
+  - hosting
+  - correo electrónico
+  - redes de datos
+  - redes informáticas
+  - networking
+  - fibra óptica
+  - conectividad
+  - cableado estructurado
+  - videoconferencia
+  - capacitación tecnológica
+  - certificación tecnológica
+  - gobierno digital
+  - expediente digital
+  - expediente electrónico
+  - gestión documental
+  - firma electrónica
+  - certificado digital
+  - ITIL
+  - ISO 27001
+  - continuidad del negocio
+
+baja:
+  - computadoras
+  - computadores
+  - equipos de cómputo
+  - equipo de cómputo
+  - laptops
+  - impresoras
+  - escáneres
+  - scanner
+  - UPS
+  - regulador de voltaje
+  - monitores
+  - pantallas
+  - proyectores
+  - licencias
+  - antivirus
+  - switches
+  - routers
+  - firewall
+  - almacenamiento
+  - discos duros
+  - memoria RAM
+  - tablets
+  - telefonía IP
+  - CCTV
+  - cámaras de seguridad
+  - control de acceso
+  - GPS

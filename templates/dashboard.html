@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor SICOP — Licitaciones</title>
+    <style>
+        :root {
+            --alta: #e74c3c;
+            --media: #f39c12;
+            --baja: #3498db;
+            --bg: #f8f9fa;
+            --card-bg: #ffffff;
+            --text: #2c3e50;
+            --border: #dee2e6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        header { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; padding: 24px 0; margin-bottom: 24px; }
+        header .container { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+        header h1 { font-size: 1.5rem; font-weight: 600; }
+        header .meta { font-size: 0.85rem; opacity: 0.8; }
+
+        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 24px; }
+        .stat-card { background: var(--card-bg); border-radius: 8px; padding: 16px; text-align: center; border-left: 4px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .stat-card.alta { border-left-color: var(--alta); }
+        .stat-card.media { border-left-color: var(--media); }
+        .stat-card.baja { border-left-color: var(--baja); }
+        .stat-card .number { font-size: 2rem; font-weight: 700; }
+        .stat-card .label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #7f8c8d; }
+
+        .filters { background: var(--card-bg); border-radius: 8px; padding: 16px; margin-bottom: 24px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        .filters label { font-size: 0.85rem; font-weight: 600; }
+        .filters input, .filters select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 0.9rem; }
+        .filters input[type="text"] { flex: 1; min-width: 200px; }
+
+        .badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; color: white; text-transform: uppercase; }
+        .badge.alta { background: var(--alta); }
+        .badge.media { background: var(--media); }
+        .badge.baja { background: var(--baja); }
+
+        .table-wrap { width: 100%; overflow-x: auto; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+        table { width: 100%; min-width: 860px; table-layout: fixed; border-collapse: collapse; background: var(--card-bg); }
+        col.col-rel  { width: 90px; }
+        col.col-name { width: 36%; }
+        col.col-inst { width: 21%; }
+        col.col-type { width: 58px; }
+        col.col-stat { width: 120px; }
+        col.col-pub  { width: 106px; }
+        col.col-dlim { width: 106px; }
+        thead { background: #f1f3f5; }
+        th { padding: 12px 14px; text-align: left; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.5px; color: #7f8c8d; white-space: nowrap; cursor: pointer; user-select: none; overflow: hidden; }
+        th:hover { color: var(--text); }
+        th .sort-arrow { margin-left: 4px; font-size: 0.7rem; }
+        td { padding: 10px 14px; border-top: 1px solid var(--border); font-size: 0.88rem; overflow: hidden; }
+        tr { cursor: pointer; }
+        tr:hover td { background: #eef4fb; }
+        .name-col { word-wrap: break-word; overflow-wrap: break-word; }
+        .name-col .title-link { color: #2980b9; font-weight: 500; }
+        .keywords { font-size: 0.75rem; color: #7f8c8d; margin-top: 2px; }
+        .inst-col { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .date-col { white-space: nowrap; font-size: 0.82rem; }
+        .count-info { font-size: 0.85rem; color: #7f8c8d; margin-bottom: 8px; }
+        .no-results { text-align: center; padding: 40px; color: #7f8c8d; }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; padding: 20px; }
+        .modal-overlay.open { display: flex; }
+        .modal { background: var(--card-bg); border-radius: 12px; max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .modal-header { padding: 24px 28px 16px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+        .modal-header h2 { font-size: 1.05rem; font-weight: 600; line-height: 1.4; flex: 1; min-width: 0; word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
+        .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #7f8c8d; padding: 0 4px; flex-shrink: 0; line-height: 1; }
+        .modal-close:hover { color: var(--text); }
+        .modal-body { padding: 20px 28px 28px; }
+        .modal-badge { margin-bottom: 16px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+        .detail-item { padding: 10px 0; border-bottom: 1px solid var(--border); }
+        .detail-item:last-child, .detail-item:nth-last-child(2):nth-child(odd) { border-bottom: none; }
+        .detail-item .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #7f8c8d; margin-bottom: 2px; }
+        .detail-item .value { font-size: 0.92rem; word-wrap: break-word; }
+        .detail-full { grid-column: 1 / -1; }
+        .modal-keywords { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+        .modal-keywords .label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; color: #7f8c8d; margin-bottom: 6px; }
+        .kw-tag { display: inline-block; background: #eef4fb; color: #2980b9; border-radius: 4px; padding: 2px 8px; font-size: 0.78rem; margin: 2px; }
+
+        @media (max-width: 768px) {
+            .filters { flex-direction: column; }
+            .filters input[type="text"] { min-width: 100%; }
+            table { font-size: 0.8rem; }
+            td, th { padding: 8px 6px; }
+            .detail-grid { grid-template-columns: 1fr; }
+            .modal-header { padding: 16px 18px 12px; }
+            .modal-body { padding: 14px 18px 20px; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>Monitor de Licitaciones SICOP</h1>
+            <div class="meta">Generado: <span id="gen-date"></span></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="stats">
+            <div class="stat-card">
+                <div class="number">{{ stats.total }}</div>
+                <div class="label">Total</div>
+            </div>
+            <div class="stat-card alta">
+                <div class="number">{{ stats.by_relevance.get('alta', 0) }}</div>
+                <div class="label">Alta</div>
+            </div>
+            <div class="stat-card media">
+                <div class="number">{{ stats.by_relevance.get('media', 0) }}</div>
+                <div class="label">Media</div>
+            </div>
+            <div class="stat-card baja">
+                <div class="number">{{ stats.by_relevance.get('baja', 0) }}</div>
+                <div class="label">Baja</div>
+            </div>
+        </div>
+
+        <div class="filters">
+            <label>Filtros:</label>
+            <input type="text" id="search" placeholder="Buscar por texto...">
+            <select id="filter-relevance">
+                <option value="">Todas las relevancias</option>
+                <option value="alta">Alta</option>
+                <option value="media">Media</option>
+                <option value="baja">Baja</option>
+            </select>
+            <select id="filter-institution">
+                <option value="">Todas las instituciones</option>
+            </select>
+        </div>
+
+        <div class="count-info"><span id="showing">0</span> licitaciones</div>
+
+        <div class="table-wrap">
+        <table>
+            <colgroup>
+                <col class="col-rel">
+                <col class="col-name">
+                <col class="col-inst">
+                <col class="col-type">
+                <col class="col-stat">
+                <col class="col-pub">
+                <col class="col-dlim">
+            </colgroup>
+            <thead>
+                <tr>
+                    <th data-sort="relevance">Relevancia <span class="sort-arrow"></span></th>
+                    <th data-sort="name">Nombre <span class="sort-arrow"></span></th>
+                    <th data-sort="institution_name">Institución <span class="sort-arrow"></span></th>
+                    <th data-sort="procedure_type">Tipo <span class="sort-arrow"></span></th>
+                    <th data-sort="status">Estado <span class="sort-arrow"></span></th>
+                    <th data-sort="registration_date">Publicación <span class="sort-arrow"></span></th>
+                    <th data-sort="bid_end_date">Fecha límite <span class="sort-arrow"></span></th>
+                </tr>
+            </thead>
+            <tbody id="tbody"></tbody>
+        </table>
+        </div>
+        <div id="no-results" class="no-results" style="display:none;">No se encontraron licitaciones con esos filtros.</div>
+    </div>
+
+    <!-- Modal detalle -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal" id="modal">
+            <div class="modal-header">
+                <h2 id="modal-title"></h2>
+                <button class="modal-close" id="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-badge" id="modal-badge"></div>
+                <div class="detail-grid" id="modal-grid"></div>
+                <div class="modal-keywords" id="modal-keywords" style="display:none;">
+                    <div class="label">Palabras clave detectadas</div>
+                    <div id="modal-kw-tags"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const DATA = {{ tenders_json }};
+        const relevanceOrder = {alta: 0, media: 1, baja: 2, no_relevante: 3};
+        const PROC_TYPES = {
+            LN:'Licitación Pública Nacional', LI:'Licitación Pública Internacional',
+            LA:'Licitación Abreviada', PP:'Procedimiento por Principio',
+            CD:'Contratación Directa', CE:'Contratación Especial',
+            RE:'Remate', LY:'Licitación Mayor', LE:'Licitación Menor',
+            LD:'Licitación Reducida', PE:'Procedimientos Especiales',
+            SE:'Subasta Inversa Electrónica', PX:'Procedimiento por Excepción'
+        };
+
+        document.getElementById('gen-date').textContent = new Date().toLocaleString('es-CR');
+
+        const institutions = [...new Set(DATA.map(t => t.institution_name))].filter(Boolean).sort();
+        const instSelect = document.getElementById('filter-institution');
+        institutions.forEach(name => {
+            const opt = document.createElement('option');
+            opt.value = name; opt.textContent = name;
+            instSelect.appendChild(opt);
+        });
+
+        let sortCol = 'registration_date', sortDir = -1;
+
+        function esc(s) {
+            if (!s) return '—';
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+
+        function render() {
+            const search = document.getElementById('search').value.toLowerCase();
+            const relFilter = document.getElementById('filter-relevance').value;
+            const instFilter = document.getElementById('filter-institution').value;
+
+            let filtered = DATA.filter(t => {
+                if (relFilter && t.relevance !== relFilter) return false;
+                if (instFilter && t.institution_name !== instFilter) return false;
+                if (search) {
+                    const hay = `${t.name} ${t.inst_cartel_no} ${t.institution_name} ${t.executor_name}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                return true;
+            });
+
+            filtered.sort((a, b) => {
+                let va = a[sortCol] || '', vb = b[sortCol] || '';
+                if (sortCol === 'relevance') { va = relevanceOrder[va] ?? 99; vb = relevanceOrder[vb] ?? 99; }
+                if (va < vb) return -1 * sortDir;
+                if (va > vb) return 1 * sortDir;
+                return 0;
+            });
+
+            const tbody = document.getElementById('tbody');
+            const noResults = document.getElementById('no-results');
+            document.getElementById('showing').textContent = filtered.length;
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+            noResults.style.display = 'none';
+
+            const kwPreview = (t) => {
+                let kw = t.matched_keywords;
+                if (typeof kw === 'string') { try { kw = JSON.parse(kw); } catch(e) { kw = []; } }
+                return Array.isArray(kw) && kw.length > 0
+                    ? `<div class="keywords">${kw.slice(0, 4).join(', ')}</div>` : '';
+            };
+
+            tbody.innerHTML = filtered.map((t, i) => `
+                <tr data-idx="${i}" onclick="openModal(filteredData[${i}])">
+                    <td><span class="badge ${t.relevance}">${t.relevance.replace('_',' ')}</span></td>
+                    <td class="name-col"><span class="title-link">${esc(t.name)}</span>${kwPreview(t)}</td>
+                    <td class="inst-col" title="${esc(t.institution_name)}">${esc(t.institution_name)}</td>
+                    <td title="${esc(PROC_TYPES[t.procedure_type]||t.procedure_type)}">${esc(t.procedure_type)}</td>
+                    <td>${esc(t.status)}</td>
+                    <td class="date-col">${esc((t.registration_date||'').slice(0,10))}</td>
+                    <td class="date-col">${esc((t.bid_end_date||'').slice(0,10))}</td>
+                </tr>
+            `).join('');
+
+            window.filteredData = filtered;
+        }
+
+        function openModal(t) {
+            let kw = t.matched_keywords;
+            if (typeof kw === 'string') { try { kw = JSON.parse(kw); } catch(e) { kw = []; } }
+
+            document.getElementById('modal-title').textContent = t.name || '—';
+            document.getElementById('modal-badge').innerHTML = `<span class="badge ${t.relevance}">${t.relevance.replace('_',' ')}</span>`;
+
+            const fields = [
+                ['Número de concurso', t.inst_cartel_no],
+                ['Número SICOP', t.cartel_no],
+                ['Institución', t.institution_name],
+                ['Ejecutor', t.executor_name],
+                ['Tipo de procedimiento', `${t.procedure_type}${PROC_TYPES[t.procedure_type] ? ' — ' + PROC_TYPES[t.procedure_type] : ''}`],
+                ['Estado', t.status],
+                ['Fecha de publicación', (t.registration_date||'').slice(0,16).replace('T',' ')],
+                ['Inicio recepción de ofertas', (t.bid_start_date||'').slice(0,16).replace('T',' ')],
+                ['Fecha límite de ofertas', (t.bid_end_date||'').slice(0,16).replace('T',' ')],
+                ['Fecha de apertura', (t.opening_date||'').slice(0,16).replace('T',' ')],
+                ['Primera vez visto', (t.first_seen||'').slice(0,16)],
+                ['Última actualización', (t.last_seen||'').slice(0,16)],
+            ];
+
+            document.getElementById('modal-grid').innerHTML = fields.map(([label, val]) => `
+                <div class="detail-item">
+                    <div class="label">${label}</div>
+                    <div class="value">${esc(val) || '—'}</div>
+                </div>
+            `).join('');
+
+            const kwSection = document.getElementById('modal-keywords');
+            if (Array.isArray(kw) && kw.length > 0) {
+                document.getElementById('modal-kw-tags').innerHTML = kw.map(k => `<span class="kw-tag">${esc(k)}</span>`).join('');
+                kwSection.style.display = 'block';
+            } else {
+                kwSection.style.display = 'none';
+            }
+
+            document.getElementById('modal-overlay').classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('modal-overlay').classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('modal-close').addEventListener('click', closeModal);
+        document.getElementById('modal-overlay').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+        document.getElementById('search').addEventListener('input', render);
+        document.getElementById('filter-relevance').addEventListener('change', render);
+        document.getElementById('filter-institution').addEventListener('change', render);
+
+        document.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.dataset.sort;
+                if (sortCol === col) { sortDir *= -1; }
+                else { sortCol = col; sortDir = (col === 'registration_date' || col === 'bid_end_date') ? -1 : 1; }
+                document.querySelectorAll('th .sort-arrow').forEach(s => s.textContent = '');
+                th.querySelector('.sort-arrow').textContent = sortDir === 1 ? '\u25B2' : '\u25BC';
+                render();
+            });
+        });
+
+        render();
+    </script>
+</body>
+</html>

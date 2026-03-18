@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SICOP Monitor — Acceso</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .card { background: white; border-radius: 12px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 4px 24px rgba(0,0,0,0.1); }
+        .logo { text-align: center; margin-bottom: 28px; }
+        .logo h1 { font-size: 1.4rem; color: #2c3e50; font-weight: 700; }
+        .logo p { font-size: 0.85rem; color: #7f8c8d; margin-top: 4px; }
+        label { display: block; font-size: 0.82rem; font-weight: 600; color: #374151; margin-bottom: 4px; }
+        input { width: 100%; padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.95rem; margin-bottom: 16px; outline: none; transition: border-color 0.15s; }
+        input:focus { border-color: #3498db; box-shadow: 0 0 0 3px rgba(52,152,219,0.15); }
+        button { width: 100%; padding: 11px; background: #2c3e50; color: white; border: none; border-radius: 8px; font-size: 0.95rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        button:hover { background: #34495e; }
+        .error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 10px 14px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <h1>SICOP Monitor</h1>
+            <p>Monitor de licitaciones públicas de Costa Rica</p>
+        </div>
+        {% if error %}
+        <div class="error">{{ error }}</div>
+        {% endif %}
+        <form method="post" action="/login">
+            <label for="username">Usuario</label>
+            <input type="text" id="username" name="username" autocomplete="username" required autofocus>
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" autocomplete="current-password" required>
+            <button type="submit">Ingresar</button>
+        </form>
+    </div>
+</body>
+</html>
