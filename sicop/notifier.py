@@ -7,6 +7,7 @@ import smtplib
 import ssl
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from html import escape as _esc
 
 import httpx
 
@@ -118,15 +119,15 @@ def send_email_new_tenders(smtp_cfg: dict, tenders: list[tuple["Tender", "Classi
     rows = ""
     for tender, classification in tenders:
         color = RELEVANCE_COLORS.get(classification.level, "#95a5a6")
-        kws = ", ".join(classification.matched_keywords[:5])
+        kws = _esc(", ".join(classification.matched_keywords[:5]))
         rows += f"""
         <tr>
             <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;">
-                <span style="background:{color};color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase">{classification.level}</span>
+                <span style="background:{color};color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;text-transform:uppercase">{_esc(classification.level)}</span>
             </td>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">{_truncate(tender.name, 120)}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px">{tender.institution_name}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">{tender.bid_end_date or '—'}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">{_esc(_truncate(tender.name, 120))}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px">{_esc(tender.institution_name)}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">{_esc(tender.bid_end_date or '—')}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">{kws}</td>
         </tr>"""
 
@@ -167,12 +168,12 @@ def send_email_contract_updates(smtp_cfg: dict, tenders: list) -> None:
     for tender in tenders:
         rows += f"""
         <tr>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">{_truncate(tender.name, 120)}</td>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px">{tender.institution_name}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-weight:600;color:#1d4ed8">{_esc(_truncate(tender.name, 120))}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:13px">{_esc(tender.institution_name)}</td>
             <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb">
-                <span style="background:#10b981;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">{tender.status}</span>
+                <span style="background:#10b981;color:white;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700">{_esc(tender.status)}</span>
             </td>
-            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">{tender.inst_cartel_no}</td>
+            <td style="padding:10px 12px;border-bottom:1px solid #e5e7eb;font-size:12px;color:#6b7280">{_esc(tender.inst_cartel_no)}</td>
         </tr>"""
 
     html = f"""<!DOCTYPE html><html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2f5;margin:0;padding:24px">

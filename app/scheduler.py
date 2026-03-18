@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from pathlib import Path
 
 import yaml
@@ -12,6 +13,8 @@ from apscheduler.triggers.cron import CronTrigger
 from sicop.scanner import run_scan
 
 logger = logging.getLogger(__name__)
+
+_scan_lock = threading.Lock()
 
 
 def _load_schedule(base_dir: Path) -> dict:
@@ -73,10 +76,10 @@ def _do_scan(scan_state: dict, base_dir: Path, days_back: int | None = None) -> 
 
 def trigger_scan(scan_state: dict, base_dir: Path, days_back: int | None = None) -> bool:
     """Lanza un scan manual en un thread separado. Retorna False si ya hay uno corriendo."""
-    import threading
-
-    if scan_state["running"]:
-        return False
+    with _scan_lock:
+        if scan_state["running"]:
+            return False
+        scan_state["running"] = True
     thread = threading.Thread(
         target=_do_scan, args=(scan_state, base_dir, days_back), daemon=True
     )
