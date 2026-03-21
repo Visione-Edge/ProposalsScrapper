@@ -24,7 +24,7 @@ def _save_progress(data: dict) -> None:
 
 
 @router.post("/api/scan")
-@limiter.limit("60/hour")
+@limiter.limit("2/hour")
 async def start_scan(request: Request):
     days_back = None
     if request.headers.get("content-type") == "application/json":
