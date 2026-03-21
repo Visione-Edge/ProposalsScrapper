@@ -6,6 +6,7 @@
 # Se asigna el nivel más alto que haga match.
 
 alta:
+  # Español
   - software
   - desarrollo de software
   - sistema de información
@@ -66,8 +67,69 @@ alta:
   - SaaS
   - PaaS
   - IaaS
+  # English
+  - software development
+  - information system
+  - information systems
+  - web application
+  - web applications
+  - digital platform
+  - digital platforms
+  - application development
+  - systems development
+  - website
+  - web portal
+  - mobile application
+  - mobile app
+  - digital transformation
+  - digitalization
+  - digitization
+  - process automation
+  - artificial intelligence
+  - data science
+  - data analytics
+  - database
+  - databases
+  - cloud migration
+  - public cloud
+  - microservices
+  - system integration
+  - systems integration
+  - digital signature
+  - cybersecurity
+  - information security
+  - software testing
+  - quality assurance
+  - IT consulting
+  - IT consultancy
+  - technology consulting
+  - IT services
+  - software factory
+  - software maintenance
+  - software support
+  - software licensing
+  - e-governance
+  - e-government
+  - digital government
+  - management information system
+  - enterprise software
+  - custom software
+  - web development
+  - app development
+  - blockchain
+  - internet of things
+  - IoT
+  - robotic process automation
+  - RPA
+  - data warehouse
+  - data lake
+  - deep learning
+  - natural language processing
+  - NLP
+  - computer vision
 
 media:
+  # Español
   - tecnologías de información
   - informática
   - telecomunicaciones
@@ -96,8 +158,40 @@ media:
   - ITIL
   - ISO 27001
   - continuidad del negocio
+  # English
+  - information technology
+  - telecommunications
+  - technology infrastructure
+  - servers
+  - virtualization
+  - email system
+  - data network
+  - data networks
+  - fiber optic
+  - connectivity
+  - structured cabling
+  - video conferencing
+  - videoconference
+  - technology training
+  - technology certification
+  - digital records
+  - electronic records
+  - document management
+  - electronic signature
+  - digital certificate
+  - business continuity
+  - disaster recovery
+  - IT infrastructure
+  - network infrastructure
+  - cloud infrastructure
+  - managed services
+  - IT outsourcing
+  - helpdesk
+  - service desk
+  - technical support
 
 baja:
+  # Español
   - computadoras
   - computadores
   - equipos de cómputo
@@ -125,3 +219,22 @@ baja:
   - cámaras de seguridad
   - control de acceso
   - GPS
+  # English
+  - computers
+  - computing equipment
+  - printers
+  - scanners
+  - voltage regulator
+  - monitors
+  - screens
+  - projectors
+  - licenses
+  - storage
+  - hard drives
+  - access control
+  - IP telephony
+  - security cameras
+  - surveillance
+  - workstations
+  - peripherals
+  - network equipment

@@ -41,7 +41,7 @@ def get_enabled_sources(config: dict) -> list[tuple[str, SourceClient]]:
         from .undp.client import UNDPClient
         client = UNDPClient(
             region=undp_cfg.get("region", "RLA"),
-            country_filter=undp_cfg.get("country_filter", "COSTA RICA"),
+            country_filter=undp_cfg.get("country_filter", ""),
         )
         enabled.append(("undp", client))
 
@@ -50,7 +50,7 @@ def get_enabled_sources(config: dict) -> list[tuple[str, SourceClient]]:
     if idb_cfg.get("enabled", False):
         from .idb.client import IDBClient
         client = IDBClient(
-            country_filter=idb_cfg.get("country_filter", "Costa Rica"),
+            country_filter=idb_cfg.get("country_filter", ""),
         )
         enabled.append(("idb", client))
 
@@ -71,5 +71,51 @@ def get_enabled_sources(config: dict) -> list[tuple[str, SourceClient]]:
             request_delay=caf_cfg.get("request_delay", 2.0),
         )
         enabled.append(("caf", client))
+
+    # EU TED
+    ted_cfg = sources_cfg.get("eu_ted", {})
+    if ted_cfg.get("enabled", False):
+        from .eu_ted.client import EUTEDClient
+        client = EUTEDClient(
+            search_query=ted_cfg.get("search_query", "software OR digital OR IT OR technology"),
+            country=ted_cfg.get("country", ""),
+        )
+        enabled.append(("eu_ted", client))
+
+    # CCSS
+    ccss_cfg = sources_cfg.get("ccss", {})
+    if ccss_cfg.get("enabled", False):
+        from .ccss.client import CCSSClient
+        client = CCSSClient(
+            request_delay=ccss_cfg.get("request_delay", 2.0),
+        )
+        enabled.append(("ccss", client))
+
+    # ICE / PEL
+    ice_cfg = sources_cfg.get("ice_pel", {})
+    if ice_cfg.get("enabled", False):
+        from .ice_pel.client import ICEPELClient
+        client = ICEPELClient(
+            request_delay=ice_cfg.get("request_delay", 2.0),
+        )
+        enabled.append(("ice_pel", client))
+
+    # UNGM
+    ungm_cfg = sources_cfg.get("ungm", {})
+    if ungm_cfg.get("enabled", False):
+        from .ungm.client import UNGMClient
+        client = UNGMClient(
+            request_delay=ungm_cfg.get("request_delay", 2.0),
+        )
+        enabled.append(("ungm", client))
+
+    # UNOPS
+    unops_cfg = sources_cfg.get("unops", {})
+    if unops_cfg.get("enabled", False):
+        from .unops.client import UNOPSClient
+        client = UNOPSClient(
+            request_delay=unops_cfg.get("request_delay", 2.0),
+        )
+        enabled.append(("unops", client))
 
     return enabled

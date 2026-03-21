@@ -6,7 +6,7 @@ page_size: 50
 # Máximo de páginas a recorrer por ejecución (0 = sin límite)
 max_pages: 0
 
-# Días hacia atrás a consultar (para scan diario, 3 es suficiente)
+# Días hacia atrás a consultar (aplica a fuentes sin days_back propio)
 days_back: 3
 
 # Segundos de espera entre requests a la API
@@ -69,16 +69,42 @@ sources:
     enabled: true
     country: "Costa Rica"
     rows_per_page: 50
+    days_back: 30
   undp:
     enabled: true
     region: "RLA"
-    country_filter: "COSTA RICA"
+    country_filter: ""
+    days_back: 30
   idb:
     enabled: true
-    country_filter: "COSTA RICA"
+    country_filter: ""
+    days_back: 365
   bcie:
-    enabled: false
+    enabled: true
     request_delay: 2.0
+    days_back: 30
   caf:
-    enabled: false
+    enabled: true
     request_delay: 2.0
+    days_back: 90
+  eu_ted:
+    enabled: true
+    search_query: "software OR digital OR IT OR technology"
+    country: ""
+    days_back: 30
+  ccss:
+    enabled: true
+    request_delay: 2.0
+    days_back: 90
+  ice_pel:
+    enabled: true
+    request_delay: 2.0
+    days_back: 30
+  ungm:
+    enabled: true
+    request_delay: 2.0
+    days_back: 30
+  unops:
+    enabled: true
+    request_delay: 2.0
+    days_back: 30

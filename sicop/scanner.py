@@ -21,19 +21,18 @@ _TODAY = datetime.now().strftime("%Y-%m-%d")
 
 
 def _is_expired(tender) -> bool:
-    """True if the tender is no longer active."""
+    """True if the tender's bid deadline has passed, or if it's older than 6 months without deadline."""
     end = getattr(tender, "bid_end_date", "")
     if end and len(end) >= 10 and end[:10] < _TODAY:
         return True
-    # If no deadline, check if registration is older than 6 months
-    reg = getattr(tender, "registration_date", "")
-    if reg and len(reg) >= 10:
-        try:
-            reg_dt = datetime.strptime(reg[:10], "%Y-%m-%d")
-            if (datetime.now() - reg_dt).days > 180:
-                return True
-        except ValueError:
-            pass
+    if not end or len(end) < 10:
+        reg = getattr(tender, "registration_date", "")
+        if reg and len(reg) >= 10:
+            try:
+                if (datetime.now() - datetime.strptime(reg[:10], "%Y-%m-%d")).days > 180:
+                    return True
+            except ValueError:
+                pass
     return False
 
 # Status strings that indicate a tender has been awarded/contracted
@@ -96,21 +95,23 @@ def run_scan(
         known_ids = storage.get_known_ids()
         log(f"Licitaciones en DB: {len(known_ids)}")
 
+        sources_cfg = cfg.get("sources", {})
         for source_name, client in enabled_sources:
             label = SOURCE_LABELS.get(source_name, source_name)
-            log(f"Escaneando {label} (últimos {_days} días)...")
+            source_days = sources_cfg.get(source_name, {}).get("days_back", _days)
+            log(f"Escaneando {label} (últimos {source_days} días)...")
 
             try:
                 # SICOP has extra params
                 if source_name == "sicop":
                     tenders = client.fetch_recent_tenders(
-                        days_back=_days,
+                        days_back=source_days,
                         max_pages=max_pages,
                         procedure_types=procedure_types or None,
                         institutions=institutions_filter or None,
                     )
                 else:
-                    tenders = client.fetch_recent_tenders(days_back=_days)
+                    tenders = client.fetch_recent_tenders(days_back=source_days)
             except Exception as e:
                 log(f"Error escaneando {label}: {e}")
                 by_source[source_name] = {"fetched": 0, "new": 0, "error": str(e)}
@@ -121,12 +122,16 @@ def run_scan(
             log(f"{label}: {len(tenders)} licitaciones obtenidas")
 
             source_new = 0
+            expired_count = 0
+            irrelevant_count = 0
             for tender in tenders:
                 if _is_expired(tender):
+                    expired_count += 1
                     continue
 
                 classification = classifier.classify_tender(tender)
                 if classification.level == "no_relevante":
+                    irrelevant_count += 1
                     continue
 
                 is_new = (tender.cartel_no, tender.cartel_seq) not in known_ids
@@ -144,9 +149,10 @@ def run_scan(
                     if classification.meets_minimum(min_relevance):
                         all_new_relevant.append((tender, classification))
 
+            log(f"{label}: {expired_count} expiradas, {irrelevant_count} no relevantes, {source_new} nuevas")
             total_fetched += len(tenders)
             total_new += source_new
-            by_source[source_name] = {"fetched": len(tenders), "new": source_new}
+            by_source[source_name] = {"fetched": len(tenders), "new": source_new, "expired": expired_count, "irrelevant": irrelevant_count}
 
         stats = storage.get_stats()
 
@@ -185,7 +191,7 @@ def run_scan(
                 except Exception as e:
                     log(f"Error email contratos: {e}")
 
-    return {
+    result = {
         "fetched": total_fetched,
         "new": total_new,
         "new_relevant": len(all_new_relevant),
@@ -194,3 +200,6 @@ def run_scan(
         "by_source": by_source,
         "completed_at": datetime.now().isoformat(timespec="seconds"),
     }
+
+
+    return result

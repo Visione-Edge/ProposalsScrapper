@@ -46,19 +46,19 @@ class WorldBankClient:
         self._client = httpx.Client(timeout=30.0)
 
     def fetch_recent_tenders(self, days_back: int = 30, **kwargs) -> list[BaseTender]:
-        cutoff = datetime.now() - timedelta(days=days_back)
-        cutoff_str = cutoff.strftime("%Y-%m-%d")
+        today_str = datetime.now().strftime("%Y-%m-%d")
         all_tenders: list[BaseTender] = []
         offset = 0
 
         while True:
             params = {
                 "format": "json",
-                "project_ctry_name": self.country,
                 "rows": self.rows_per_page,
                 "os": offset,
-                "strdate": cutoff_str,
+                "deadlinedate": today_str,  # Only notices with deadline >= today
             }
+            if self.country:
+                params["project_ctry_name"] = self.country
             resp = self._client.get(API_URL, params=params)
             resp.raise_for_status()
             data = resp.json()

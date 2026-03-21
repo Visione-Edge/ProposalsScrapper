@@ -42,16 +42,12 @@ const TODAY = new Date().toISOString().slice(0, 10);
 function isExpired(tender) {
     var end = tender.bid_end_date;
     if (end && String(end).length >= 10 && String(end).slice(0, 10) < TODAY) return true;
-    var start = tender.bid_start_date;
-    if (start && String(start).length >= 10 && String(start).slice(0, 10) < TODAY) {
-        if (!end || String(end).length < 10) return true;
-    }
-    var reg = tender.registration_date;
-    if (reg && String(reg).length >= 10) {
-        var regDate = new Date(String(reg).slice(0, 10));
-        var sixMonthsAgo = new Date();
-        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-        if (regDate < sixMonthsAgo && (!end || String(end).length < 10)) return true;
+    if (!end || String(end).length < 10) {
+        var reg = tender.registration_date;
+        if (reg && String(reg).length >= 10) {
+            var diff = (new Date() - new Date(String(reg).slice(0, 10))) / 86400000;
+            if (diff > 180) return true;
+        }
     }
     return false;
 }
@@ -76,15 +72,24 @@ institutions.forEach(name => {
 });
 
 /* Populate source dropdown */
-if (sourceFilter) {
-    const sources = [...new Set(TENDERS.map(t => t.source || 'sicop'))].filter(Boolean).sort();
-    sources.forEach(s => {
-        const option = document.createElement('option');
-        option.value = s;
-        option.textContent = SOURCE_LABELS[s] || s;
-        sourceFilter.appendChild(option);
-    });
-}
+(function populateSources() {
+    var sel = document.getElementById('filter-source');
+    if (!sel) return;
+    var seen = {};
+    for (var i = 0; i < TENDERS.length; i++) {
+        var s = TENDERS[i].source || 'sicop';
+        TENDERS[i].source = s;
+        seen[s] = true;
+    }
+    var keys = Object.keys(seen).sort();
+    for (var j = 0; j < keys.length; j++) {
+        var opt = document.createElement('option');
+        opt.value = keys[j];
+        opt.textContent = SOURCE_LABELS[keys[j]] || keys[j];
+        sel.appendChild(opt);
+    }
+    console.log('Sources found:', keys);
+})();
 
 /* Utilities */
 function escapeHtml(value) {

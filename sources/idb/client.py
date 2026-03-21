@@ -44,7 +44,7 @@ class IDBClient:
         reader = csv.DictReader(io.StringIO(resp.text))
         for row in reader:
             country = (row.get("countryname") or "").upper()
-            if self.country_filter not in country:
+            if self.country_filter and self.country_filter not in country:
                 continue
 
             tender = self._map_row(row, cutoff)

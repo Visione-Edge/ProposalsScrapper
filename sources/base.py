@@ -53,6 +53,11 @@ SOURCE_LABELS = {
     "idb": "BID/IDB",
     "bcie": "BCIE",
     "caf": "CAF",
+    "eu_ted": "EU/TED",
+    "ccss": "CCSS",
+    "ice_pel": "ICE/PEL",
+    "ungm": "UNGM",
+    "unops": "UNOPS",
 }
 
 

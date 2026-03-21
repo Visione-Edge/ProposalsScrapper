@@ -65,22 +65,23 @@ class Storage:
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_favorite ON tenders(favorite)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_viewed ON tenders(viewed)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_source ON tenders(source)")
+        # Backfill source for existing tenders that have NULL or empty
+        self._conn.execute("UPDATE tenders SET source = 'sicop' WHERE source IS NULL OR source = ''")
         # Backfill source_url for existing SICOP tenders
         self._conn.execute("""
             UPDATE tenders SET source_url =
                 'https://www.sicop.go.cr/moduloOferta/search/EP_SEJ_COQ603.jsp?cartelNo=' || cartel_no || '&cartelSeq=' || cartel_seq
             WHERE source = 'sicop' AND (source_url IS NULL OR source_url = '')
         """)
-        # Clean up expired tenders (bid_end_date in the past, not favorites)
+        # Clean up expired tenders (not favorites)
         self._conn.execute("""
             DELETE FROM tenders
-            WHERE favorite = 0
-            AND (
+            WHERE favorite = 0 AND (
                 (bid_end_date != '' AND bid_end_date IS NOT NULL AND substr(bid_end_date, 1, 10) < date('now'))
                 OR
-                (registration_date != '' AND registration_date IS NOT NULL
-                 AND substr(registration_date, 1, 10) < date('now', '-180 days')
-                 AND (bid_end_date IS NULL OR bid_end_date = ''))
+                ((bid_end_date IS NULL OR bid_end_date = '')
+                 AND registration_date IS NOT NULL AND registration_date != ''
+                 AND substr(registration_date, 1, 10) < date('now', '-180 days'))
             )
         """)
         self._conn.commit()
