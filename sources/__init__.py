@@ -32,6 +32,7 @@ def get_enabled_sources(config: dict) -> list[tuple[str, SourceClient]]:
         client = WorldBankClient(
             country=wb_cfg.get("country", "Costa Rica"),
             rows_per_page=wb_cfg.get("rows_per_page", 50),
+            search_terms=wb_cfg.get("search_terms", ""),
         )
         enabled.append(("worldbank", client))
 

@@ -67,7 +67,8 @@ sources:
     request_delay: 1.0
   worldbank:
     enabled: true
-    country: "Costa Rica"
+    country: ""              # Vacío = busca por texto en vez de país
+    search_terms: "software,digital,IT,technology,information system,cloud,cybersecurity"
     rows_per_page: 50
     days_back: 30
   undp:
@@ -97,11 +98,11 @@ sources:
     request_delay: 2.0
     days_back: 90
   ice_pel:
-    enabled: true
+    enabled: false          # Requiere login en portal PEL
     request_delay: 2.0
     days_back: 30
   ungm:
-    enabled: true
+    enabled: false          # Requiere headless browser (Angular app)
     request_delay: 2.0
     days_back: 30
   unops:

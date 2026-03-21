@@ -35,7 +35,9 @@ class BaseTender:
 
     @property
     def searchable_text(self) -> str:
-        return f"{self.name} {self.inst_cartel_no} {self.institution_name}".lower()
+        parts = [self.name, self.inst_cartel_no, self.institution_name,
+                 self.procedure_type, self.executor_name]
+        return " ".join(p for p in parts if p).lower()
 
     @property
     def url(self) -> str:

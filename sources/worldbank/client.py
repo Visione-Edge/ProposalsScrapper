@@ -40,13 +40,18 @@ def _parse_date(date_str: str | None) -> str:
 class WorldBankClient:
     """Fetches procurement notices from the World Bank API."""
 
-    def __init__(self, country: str = "Costa Rica", rows_per_page: int = 50):
+    def __init__(self, country: str = "Costa Rica", rows_per_page: int = 50,
+                 search_terms: str = "", max_pages: int = 20):
         self.country = country
+        self.search_terms = search_terms
         self.rows_per_page = rows_per_page
+        self.max_pages = max_pages
         self._client = httpx.Client(timeout=30.0)
 
     def fetch_recent_tenders(self, days_back: int = 30, **kwargs) -> list[BaseTender]:
-        today_str = datetime.now().strftime("%Y-%m-%d")
+        today = datetime.now()
+        today_str = today.strftime("%Y-%m-%d")
+        cutoff_str = (today - timedelta(days=days_back)).strftime("%Y-%m-%d")
         all_tenders: list[BaseTender] = []
         offset = 0
 
@@ -55,10 +60,12 @@ class WorldBankClient:
                 "format": "json",
                 "rows": self.rows_per_page,
                 "os": offset,
-                "deadlinedate": today_str,  # Only notices with deadline >= today
+                "strdate": cutoff_str,
             }
             if self.country:
                 params["project_ctry_name"] = self.country
+            elif self.search_terms:
+                params["qterm"] = self.search_terms.replace(",", " OR ")
             resp = self._client.get(API_URL, params=params)
             resp.raise_for_status()
             data = resp.json()
@@ -68,6 +75,11 @@ class WorldBankClient:
                 break
 
             for n in notices:
+                # Skip notices with deadline already passed
+                deadline = n.get("submission_deadline_date", "")
+                if deadline and len(deadline) >= 10 and deadline[:10] < today_str:
+                    continue
+
                 tender = self._map_notice(n)
                 if tender:
                     all_tenders.append(tender)
@@ -76,8 +88,10 @@ class WorldBankClient:
             offset += self.rows_per_page
             if offset >= total:
                 break
+            if offset >= self.max_pages * self.rows_per_page:
+                break
 
-        logger.info("World Bank: %d notices fetched for %s", len(all_tenders), self.country)
+        logger.info("World Bank: %d active notices fetched for %s", len(all_tenders), self.country)
         return all_tenders
 
     def _map_notice(self, n: dict) -> BaseTender | None:
