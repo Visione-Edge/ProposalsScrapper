@@ -52,9 +52,33 @@ notifications:
     # Notificar cuando una licitación favorita entra en estado de contrato/adjudicación
     notify_on_contract: true
 
-# Filtros opcionales de tipos de procedimiento a incluir
+# Filtros opcionales de tipos de procedimiento a incluir (SICOP)
 # (vacío = todos). Códigos: LN, LI, LA, PP, CD, CE, RE, LD
 procedure_types: []
 
 # Filtros opcionales de instituciones (por código). Vacío = todas
 institutions: []
+
+# Fuentes de licitaciones
+sources:
+  sicop:
+    enabled: true
+    page_size: 50
+    request_delay: 1.0
+  worldbank:
+    enabled: true
+    country: "Costa Rica"
+    rows_per_page: 50
+  undp:
+    enabled: true
+    region: "RLA"
+    country_filter: "COSTA RICA"
+  idb:
+    enabled: true
+    country_filter: "COSTA RICA"
+  bcie:
+    enabled: false
+    request_delay: 2.0
+  caf:
+    enabled: false
+    request_delay: 2.0

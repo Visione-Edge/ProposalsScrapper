@@ -56,12 +56,33 @@ class Storage:
             ("favorite", "INTEGER DEFAULT 0"),
             ("not_interested", "INTEGER DEFAULT 0"),
             ("notes", "TEXT DEFAULT ''"),
-            ("viewed", "INTEGER DEFAULT 0"),   # ADD THIS
+            ("viewed", "INTEGER DEFAULT 0"),
+            ("source", "TEXT DEFAULT 'sicop'"),
+            ("source_url", "TEXT DEFAULT ''"),
         ]:
             if col not in existing:
                 self._conn.execute(f"ALTER TABLE tenders ADD COLUMN {col} {definition}")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_favorite ON tenders(favorite)")
         self._conn.execute("CREATE INDEX IF NOT EXISTS idx_viewed ON tenders(viewed)")
+        self._conn.execute("CREATE INDEX IF NOT EXISTS idx_source ON tenders(source)")
+        # Backfill source_url for existing SICOP tenders
+        self._conn.execute("""
+            UPDATE tenders SET source_url =
+                'https://www.sicop.go.cr/moduloOferta/search/EP_SEJ_COQ603.jsp?cartelNo=' || cartel_no || '&cartelSeq=' || cartel_seq
+            WHERE source = 'sicop' AND (source_url IS NULL OR source_url = '')
+        """)
+        # Clean up expired tenders (bid_end_date in the past, not favorites)
+        self._conn.execute("""
+            DELETE FROM tenders
+            WHERE favorite = 0
+            AND (
+                (bid_end_date != '' AND bid_end_date IS NOT NULL AND substr(bid_end_date, 1, 10) < date('now'))
+                OR
+                (registration_date != '' AND registration_date IS NOT NULL
+                 AND substr(registration_date, 1, 10) < date('now', '-180 days')
+                 AND (bid_end_date IS NULL OR bid_end_date = ''))
+            )
+        """)
         self._conn.commit()
 
     def close(self) -> None:
@@ -79,13 +100,15 @@ class Storage:
 
     def upsert_tender(
         self,
-        tender: Tender,
+        tender,
         relevance: str = "no_relevante",
         matched_keywords: list[str] | None = None,
     ) -> bool:
         """Inserta o actualiza una licitación. Retorna True si es nueva."""
         keywords_json = json.dumps(matched_keywords or [], ensure_ascii=False)
         raw_json = json.dumps(tender.raw, ensure_ascii=False, default=str)
+        source = getattr(tender, "source", "sicop")
+        source_url = getattr(tender, "source_url", getattr(tender, "url", ""))
 
         cursor = self._conn.execute(
             """
@@ -93,8 +116,9 @@ class Storage:
                 cartel_no, cartel_seq, inst_cartel_no, name,
                 institution_code, institution_name, procedure_type,
                 status, registration_date, bid_start_date, bid_end_date,
-                opening_date, executor_name, relevance, matched_keywords, raw_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                opening_date, executor_name, relevance, matched_keywords, raw_json,
+                source, source_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(cartel_no, cartel_seq) DO UPDATE SET
                 status = excluded.status,
                 last_seen = datetime('now', 'localtime'),
@@ -106,6 +130,7 @@ class Storage:
                 tender.procedure_type, tender.status, tender.registration_date,
                 tender.bid_start_date, tender.bid_end_date, tender.opening_date,
                 tender.executor_name, relevance, keywords_json, raw_json,
+                source, source_url,
             ),
         )
         self._conn.commit()
@@ -184,10 +209,14 @@ class Storage:
             "SELECT institution_name, COUNT(*) as cnt FROM tenders GROUP BY institution_name ORDER BY cnt DESC LIMIT 20"
         ):
             by_institution[row["institution_name"]] = row["cnt"]
+        by_source: dict = {}
+        for row in self._conn.execute("SELECT source, COUNT(*) as cnt FROM tenders GROUP BY source"):
+            by_source[row["source"] or "sicop"] = row["cnt"]
         return {
             "total": total,
             "favorites": favorites,
             "unviewed": unviewed,
             "by_relevance": by_relevance,
             "by_institution": by_institution,
+            "by_source": by_source,
         }

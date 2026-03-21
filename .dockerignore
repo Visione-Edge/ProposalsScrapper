@@ -1,0 +1,11 @@
+data/
+nginx.conf
+nginx.conf.bak
+nginx.dev.conf
+docker-compose.yml
+docker-compose.override.yml
+.env
+.git
+__pycache__
+*.md
+init-*.sh

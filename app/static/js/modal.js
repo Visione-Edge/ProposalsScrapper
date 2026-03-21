@@ -20,9 +20,18 @@ function openModal(index) {
 
     document.getElementById('modal-title').textContent = tender.name || '—';
 
+    var SOURCE_LABELS = { sicop: 'SICOP', worldbank: 'Banco Mundial', undp: 'UNDP', idb: 'BID/IDB', bcie: 'BCIE', caf: 'CAF' };
+    var tenderSource = tender.source || 'sicop';
+    var isSicop = tenderSource === 'sicop';
+
     var detailFields = [
-        ['N° de concurso', tender.inst_cartel_no, false, true],
-        ['N° SICOP', tender.cartel_no, false, true],
+        ['Fuente', SOURCE_LABELS[tenderSource] || tenderSource],
+        ['N° de referencia', tender.inst_cartel_no, false, true],
+    ];
+    if (isSicop) {
+        detailFields.push(['N° SICOP', tender.cartel_no, false, true]);
+    }
+    detailFields = detailFields.concat([
         ['Institución', tender.institution_name, true],
         ['Ejecutor', tender.executor_name, true],
         ['Tipo de procedimiento', d.PROCEDURE_TYPES[tender.procedure_type]
@@ -34,14 +43,18 @@ function openModal(index) {
         ['Fecha límite', d.formatDateTime(tender.bid_end_date)],
         ['Apertura', d.formatDateTime(tender.opening_date)],
         ['Primera vez visto', d.formatDateTime(tender.first_seen)],
-    ];
+    ]);
+    if (tender.source_url) {
+        detailFields.push(['Enlace', '<a href="' + d.escapeHtml(tender.source_url) + '" target="_blank" rel="noopener">Ver en sitio original</a>', true, false, true]);
+    }
 
     document.getElementById('modal-details').innerHTML = detailFields.map(function(field) {
-        var label = field[0], value = field[1], isFullWidth = field[2], copyable = field[3];
+        var label = field[0], value = field[1], isFullWidth = field[2], copyable = field[3], isHtml = field[4];
         var copyBtn = copyable && value ? ' <button class="copy-btn" onclick="copyToClipboard(\'' + d.escapeHtml(value) + '\', this)" title="Copiar">Copiar</button>' : '';
+        var displayValue = isHtml ? (value || '—') : d.escapeHtml(value);
         return '<div class="detail-item' + (isFullWidth ? ' full' : '') + '">' +
             '<div class="detail-label">' + label + '</div>' +
-            '<div class="detail-value">' + d.escapeHtml(value) + copyBtn + '</div>' +
+            '<div class="detail-value">' + displayValue + copyBtn + '</div>' +
         '</div>';
     }).join('');
 

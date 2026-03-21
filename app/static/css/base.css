@@ -149,6 +149,12 @@ nav {
 .badge-media { background: var(--media-bg); color: var(--media); }
 .badge-baja { background: var(--baja-bg); color: var(--baja); }
 .badge-new { background: var(--success-bg); color: var(--success); font-size: 0.65rem; }
+.badge-source { font-size: 0.6rem; margin-left: 6px; padding: 1px 6px; vertical-align: middle; }
+.badge-source-worldbank { background: #e3f2fd; color: #1565c0; }
+.badge-source-undp { background: #e8f5e9; color: #2e7d32; }
+.badge-source-idb { background: #fff3e0; color: #e65100; }
+.badge-source-bcie { background: #f3e5f5; color: #7b1fa2; }
+.badge-source-caf { background: #fce4ec; color: #c62828; }
 
 /* Toast */
 .toast {

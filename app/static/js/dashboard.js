@@ -6,6 +6,15 @@ const TENDERS = window.SICOP.tenders;
 
 const RELEVANCE_ORDER = { alta: 0, media: 1, baja: 2 };
 
+const SOURCE_LABELS = {
+    sicop: 'SICOP',
+    worldbank: 'Banco Mundial',
+    undp: 'UNDP',
+    idb: 'BID/IDB',
+    bcie: 'BCIE',
+    caf: 'CAF',
+};
+
 const PROCEDURE_TYPES = {
     LN: 'Licitación Pública Nacional',
     LI: 'Licitación Pública Internacional',
@@ -28,6 +37,24 @@ let sortColumn = 'registration_date';
 let sortDirection = -1;
 
 const NEW_CUTOFF = new Date(Date.now() - 48 * 3600 * 1000).toISOString().slice(0, 19);
+const TODAY = new Date().toISOString().slice(0, 10);
+
+function isExpired(tender) {
+    var end = tender.bid_end_date;
+    if (end && String(end).length >= 10 && String(end).slice(0, 10) < TODAY) return true;
+    var start = tender.bid_start_date;
+    if (start && String(start).length >= 10 && String(start).slice(0, 10) < TODAY) {
+        if (!end || String(end).length < 10) return true;
+    }
+    var reg = tender.registration_date;
+    if (reg && String(reg).length >= 10) {
+        var regDate = new Date(String(reg).slice(0, 10));
+        var sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        if (regDate < sixMonthsAgo && (!end || String(end).length < 10)) return true;
+    }
+    return false;
+}
 
 /* DOM references */
 const searchInput = document.getElementById('search-input');
@@ -38,6 +65,8 @@ const mobileCardsContainer = document.getElementById('mobile-cards');
 const noResultsMessage = document.getElementById('no-results');
 const resultsCounter = document.getElementById('results-count');
 
+const sourceFilter = document.getElementById('filter-source');
+
 /* Populate institution dropdown */
 const institutions = [...new Set(TENDERS.map(t => t.institution_name))].filter(Boolean).sort();
 institutions.forEach(name => {
@@ -45,6 +74,17 @@ institutions.forEach(name => {
     option.value = option.textContent = name;
     institutionFilter.appendChild(option);
 });
+
+/* Populate source dropdown */
+if (sourceFilter) {
+    const sources = [...new Set(TENDERS.map(t => t.source || 'sicop'))].filter(Boolean).sort();
+    sources.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s;
+        option.textContent = SOURCE_LABELS[s] || s;
+        sourceFilter.appendChild(option);
+    });
+}
 
 /* Utilities */
 function escapeHtml(value) {
@@ -70,16 +110,19 @@ function render() {
     const query = searchInput.value.toLowerCase();
     const relevance = relevanceFilter.value;
     const institution = institutionFilter.value;
+    const source = sourceFilter ? sourceFilter.value : '';
 
     let rows = TENDERS.filter(tender => {
+        if (isExpired(tender)) return false;
         if (relevance && tender.relevance !== relevance) return false;
         if (institution && tender.institution_name !== institution) return false;
+        if (source && (tender.source || 'sicop') !== source) return false;
         if (filterState.fav && !tender.favorite) return false;
         if (filterState.new && !isNewTender(tender)) return false;
         if (!filterState.hidden && tender.not_interested) return false;
         if (filterState.hidden && !tender.not_interested) return false;
         if (query) {
-            const searchable = `${tender.name} ${tender.inst_cartel_no} ${tender.institution_name} ${tender.executor_name} ${tender.notes || ''}`.toLowerCase();
+            const searchable = `${tender.name} ${tender.inst_cartel_no} ${tender.institution_name} ${tender.executor_name} ${tender.notes || ''} ${SOURCE_LABELS[tender.source] || tender.source || ''}`.toLowerCase();
             if (!searchable.includes(query)) return false;
         }
         return true;
@@ -123,12 +166,14 @@ function renderTable(rows) {
         else if (isNew && !tender.viewed) rowClass = 'is-new';
         else if (!tender.viewed) rowClass = 'unviewed';
 
+        const sourceBadge = tender.source && tender.source !== 'sicop' ? `<span class="badge badge-source badge-source-${escapeHtml(tender.source)}">${escapeHtml(SOURCE_LABELS[tender.source] || tender.source)}</span>` : '';
+
         return `<tr class="${rowClass}" onclick="openModal(${index})">
             <td onclick="event.stopPropagation(); toggleFavorite(${index})">
                 <button class="star-btn ${tender.favorite ? 'on' : ''}" title="Favorito">★</button>
             </td>
             <td><span class="badge badge-${escapeHtml(tender.relevance)}">${escapeHtml(tender.relevance)}</span></td>
-            <td class="name-cell">${unviewedDot}<span class="title">${escapeHtml(tender.name)}</span>${newBadge}
+            <td class="name-cell">${unviewedDot}<span class="title">${escapeHtml(tender.name)}</span>${newBadge}${sourceBadge}
                 ${keywords.length ? `<div class="keyword-preview">${keywords.slice(0, 4).map(k => escapeHtml(k)).join(', ')}</div>` : ''}</td>
             <td class="institution-cell" title="${escapeHtml(tender.institution_name)}">${escapeHtml(tender.institution_name)}</td>
             <td title="${escapeHtml(PROCEDURE_TYPES[tender.procedure_type])}">${escapeHtml(tender.procedure_type)}</td>
@@ -151,13 +196,15 @@ function renderMobileCards(rows) {
         else if (isNew) cardClass = 'card-new';
         else if (!tender.viewed) cardClass = 'card-unviewed';
 
+        const mSourceBadge = tender.source && tender.source !== 'sicop' ? ` <span class="badge badge-source badge-source-${escapeHtml(tender.source)}">${escapeHtml(SOURCE_LABELS[tender.source] || tender.source)}</span>` : '';
+
         return `<div class="mobile-card rel-${escapeHtml(tender.relevance)} ${cardClass}" onclick="openModal(${index})">
             <div class="card-top">
                 <div class="card-star" onclick="event.stopPropagation(); toggleFavorite(${index})">
                     <button class="star-btn ${tender.favorite ? 'on' : ''}" title="Favorito">★</button>
                 </div>
                 <div class="card-body">
-                    <div class="card-title">${unviewedDot}${escapeHtml(tender.name)}${newBadge}</div>
+                    <div class="card-title">${unviewedDot}${escapeHtml(tender.name)}${newBadge}${mSourceBadge}</div>
                     <div class="card-institution">${escapeHtml(tender.institution_name)}</div>
                     ${keywords.length ? `<div class="card-keywords">${keywords.slice(0, 3).map(k => escapeHtml(k)).join(', ')}</div>` : ''}
                 </div>
@@ -214,6 +261,7 @@ document.querySelectorAll('th[data-sort]').forEach(header => {
 searchInput.addEventListener('input', render);
 relevanceFilter.addEventListener('change', render);
 institutionFilter.addEventListener('change', render);
+if (sourceFilter) sourceFilter.addEventListener('change', render);
 
 /* Expose shared state for modal.js */
 window._dashboard = { TENDERS, PROCEDURE_TYPES, escapeHtml, formatDateTime, render, updateFavoriteCount };
